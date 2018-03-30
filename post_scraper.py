@@ -2,11 +2,10 @@ from urllib import request, parse
 from urllib.error import HTTPError
 from time import sleep
 from random import uniform
-import json
 
 base_url = 'https://www.techinasia.com/wp-json/techinasia/2.0/posts/'
-pid_min = 491009
-pid_max = 491011
+pid_min = 433000
+pid_max = 433999
 sleep_sec_min = 0.3
 sleep_sec_max = 1
 headers = {
@@ -28,6 +27,7 @@ def sleep_jitter(min, max):
     sleep(sleep_sec)
 
 
+cnt = 0
 for i in range(pid_min, pid_max + 1):
     url = base_url + str(i)
     print(f'url={url}')
@@ -40,15 +40,12 @@ for i in range(pid_min, pid_max + 1):
         else:
             raise
     else:
+        cnt += 1
+        print(f'pid={i}, 200 OK')
         json_str = to_str(u.read())
-        p = json.loads(json_str)
-        print(f'p={p}')
         # print(f'json_str={json_str}')
         with open(f'posts/p{i}.json', 'wt', encoding='utf8') as f:
             f.write(json_str)
     sleep_jitter(sleep_sec_min, sleep_sec_max)
 
-
-
-
-
+print(f'success_n={cnt}')
