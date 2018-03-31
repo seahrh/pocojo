@@ -1,11 +1,11 @@
-from urllib import request, parse
+from urllib import request
 from urllib.error import HTTPError
 from time import sleep
 from random import uniform
 
 base_url = 'https://www.techinasia.com/wp-json/techinasia/2.0/posts/'
-pid_min = 433000
-pid_max = 433999
+pid_min = 300000
+pid_max = 309999
 sleep_sec_min = 0.3
 sleep_sec_max = 1
 headers = {
@@ -41,7 +41,7 @@ for i in range(pid_min, pid_max + 1):
             raise
     else:
         cnt += 1
-        print(f'pid={i}, 200 OK')
+        print(f'pid={i}, 200 OK, success_n={cnt}')
         json_str = to_str(u.read())
         # print(f'json_str={json_str}')
         with open(f'posts/p{i}.json', 'wt', encoding='utf8') as f:
