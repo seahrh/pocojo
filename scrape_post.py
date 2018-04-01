@@ -4,8 +4,8 @@ from time import sleep
 from random import uniform
 
 base_url = 'https://www.techinasia.com/wp-json/techinasia/2.0/posts/'
-pid_min = 300000
-pid_max = 309999
+pid_min = 360000
+pid_max = 399999
 sleep_sec_min = 0.3
 sleep_sec_max = 1
 headers = {

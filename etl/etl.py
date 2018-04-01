@@ -10,11 +10,11 @@ def to_str(bytes_or_str):
     return value # Instance of str
 
 
-def scrape_and_save_file(url,
-                         headers,
-                         file_path,
-                         timeout=30,
-                         file_encoding='utf8'):
+def scrape_to_file(url,
+                   headers,
+                   file_path,
+                   timeout=30,
+                   file_encoding='utf8'):
     req = request.Request(url, headers=headers)
     try:
         u = request.urlopen(req, timeout=timeout)
