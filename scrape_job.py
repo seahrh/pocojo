@@ -1,7 +1,6 @@
-from time import sleep
 from random import uniform
-import glob
-from os import path
+from time import sleep
+
 from etl import etl
 
 url_template = 'https://www.techinasia.com/api/2.0/job-postings?page={}'
