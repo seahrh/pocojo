@@ -1,6 +1,8 @@
 .idea/
 venv/
 posts/
+comments/
+jobs/
 *.json
 
 # Byte-compiled / optimized / DLL files
