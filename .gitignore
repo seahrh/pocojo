@@ -4,6 +4,7 @@ posts/
 posts_txt/
 comments/
 jobs/
+tmp/
 *.json
 
 # Byte-compiled / optimized / DLL files
