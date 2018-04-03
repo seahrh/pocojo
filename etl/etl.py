@@ -1,13 +1,6 @@
 from urllib import request
 from urllib.error import HTTPError
-
-
-def to_str(bytes_or_str):
-    if isinstance(bytes_or_str, bytes):
-        value = bytes_or_str.decode('utf-8')
-    else:
-        value = bytes_or_str
-    return value # Instance of str
+from stringx.stringx import to_str
 
 
 def scrape_to_file(url,

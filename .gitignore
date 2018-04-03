@@ -1,6 +1,7 @@
 .idea/
 venv/
 posts/
+posts_txt/
 comments/
 jobs/
 *.json
