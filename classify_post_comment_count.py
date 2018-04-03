@@ -1,10 +1,14 @@
 import glob
 import csv
+import json
 from os import path
 from operator import itemgetter
 from collections import OrderedDict
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn import metrics
 import nltk
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
@@ -12,9 +16,30 @@ from scipy.sparse import save_npz
 from stringx.stringx import strip_punctuation
 
 posts_glob_pattern = 'posts_txt/*.txt'
+comments_glob_pattern = 'comments/*.json'
 
 __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
+
+
+def comment_count(jo):
+    comments = jo['comments']
+    n = 0
+    for i, comment in enumerate(comments):
+        n += 1
+        for _ in comment['children']:
+            n += 1
+    return n
+
+
+def __label(n_comment):
+    if n_comment < 0:
+        raise ValueError('comment count must not be less than 0')
+    if 0 <= n_comment <= 2:
+        return 'lo'
+    if 3 <= n_comment <= 5:
+        return 'mi'
+    return 'hi'
 
 
 def __preprocessor(text):
@@ -51,6 +76,30 @@ def __pipeline(clf_type):
     return pipe
 
 
+def main():
+    posts = list()
+    paths = sorted(glob.glob(posts_glob_pattern))
+    for p in paths:
+        with open(p, 'rt') as f:
+            s = f.read()
+            posts.append(s)
+    labels = list()
+    paths = sorted(glob.glob(comments_glob_pattern))
+    for p in paths:
+        with open(p, 'rt') as f:
+            _jo = json.load(f)
+            n_comment = comment_count(_jo)
+            labels.append(__label(n_comment))
+    train, test, train_labels, test_labels = train_test_split(
+        posts, labels, test_size=0.1, random_state=42
+    )
+    pipe = __pipeline(MultinomialNB)
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    # print report
+    print(metrics.classification_report(test_labels, preds))
+
+
 def foo():
     pid_to_tokens = OrderedDict()
     paths = glob.glob(posts_glob_pattern)
@@ -58,11 +107,7 @@ def foo():
         pid = path.basename(p)[1:-4]
         with open(p, 'rt') as f:
             s = f.read()
-            # s = s.lower().replace('\r', ' ').replace('\n', ' ').strip()
-            # s = strip_punctuation(s)
-            # print(f'pid={repr(pid)}\ns={repr(s)}')
             pid_to_tokens[pid] = s
-
     tf_idf = TfidfVectorizer(
         tokenizer=__tokenizer,
         preprocessor=__preprocessor,
@@ -82,4 +127,4 @@ def foo():
     save_npz('tmp/ws', ws)
 
 
-foo()
+main()
