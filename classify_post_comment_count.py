@@ -8,6 +8,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn import metrics
 import nltk
 from nltk.stem.porter import PorterStemmer
@@ -62,16 +64,16 @@ def __tokenizer(text):
     return stems
 
 
-def __pipeline(clf_type):
+def __pipeline(clf):
     pipe = Pipeline([
         ('vect', TfidfVectorizer(
             tokenizer=__tokenizer,
             preprocessor=__preprocessor,
             stop_words=__stopwords,
-            min_df=0.1,
+            min_df=0.02,
             sublinear_tf=True
         )),
-        ('clf', clf_type()),
+        ('clf', clf),
     ])
     return pipe
 
@@ -83,6 +85,7 @@ def main():
         with open(p, 'rt') as f:
             s = f.read()
             posts.append(s)
+    # print(f'posts={repr(posts[:10])}')
     labels = list()
     paths = sorted(glob.glob(comments_glob_pattern))
     for p in paths:
@@ -90,14 +93,39 @@ def main():
             _jo = json.load(f)
             n_comment = comment_count(_jo)
             labels.append(__label(n_comment))
+    # print(f'labels={repr(labels[:10])}')
     train, test, train_labels, test_labels = train_test_split(
         posts, labels, test_size=0.1, random_state=42
     )
-    pipe = __pipeline(MultinomialNB)
+    pipe = __pipeline(MultinomialNB())
     pipe.fit(train, train_labels)
     preds = pipe.predict(test)
     # print report
-    print(metrics.classification_report(test_labels, preds))
+    report = metrics.classification_report(test_labels, preds)
+    print(f'MultinomialNB\n{report}')
+    pipe = __pipeline(LinearSVC())
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    # print report
+    report = metrics.classification_report(test_labels, preds)
+    print(f'LinearSVC\n{report}')
+    pipe = __pipeline(RandomForestClassifier(
+        n_jobs=-1,
+        random_state=42
+    ))
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    # print report
+    report = metrics.classification_report(test_labels, preds)
+    print(f'RandomForestClassifier\n{report}')
+    pipe = __pipeline(GradientBoostingClassifier(
+        random_state=42
+    ))
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    # print report
+    report = metrics.classification_report(test_labels, preds)
+    print(f'GradientBoostingClassifier\n{report}')
 
 
 def foo():
