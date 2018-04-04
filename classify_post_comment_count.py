@@ -21,6 +21,7 @@ posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 
 __random_state = 42
+__folds = 3
 __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
@@ -65,7 +66,19 @@ def __tokenizer(text):
     return stems
 
 
-def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None):
+def __grid_search(pipeline, param_grid, train, train_labels):
+    grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid)
+    grid.fit(train, train_labels)
+    print("Grid search\nBest: %f using %s" % (grid.best_score_,
+                                              grid.best_params_))
+    means = grid.cv_results_['mean_test_score']
+    stds = grid.cv_results_['std_test_score']
+    params = grid.cv_results_['params']
+    for mean, std, param in zip(means, stds, params):
+        print("%f (%f) with: %r" % (mean, std, param))
+
+
+def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None, is_tuning=False):
     print(f'#####  {classifier.__class__.__name__}  #####')
     pipe = Pipeline([
         ('tfidf', TfidfVectorizer(
@@ -77,26 +90,20 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
         )),
         ('classifier', classifier)
     ])
-    if param_grid is None:
-        scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=3)
-        print(f'Validation result\nf1_macro={np.median(scores)} (median)')
-        pipe.fit(train, train_labels)
-        preds = pipe.predict(test)
-        report = classification_report(test_labels, preds)
-        f1_macro = f1_score(test_labels, preds, average='macro')
-        f1_micro = f1_score(test_labels, preds, average='micro')
-        print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
+    if is_tuning:
+        if param_grid is None:
+            param_grid = {}
+        param_grid['tfidf__min_df'] = [1, 0.01, 0.05, 0.10]
+        __grid_search(pipe, param_grid, train, train_labels)
         return
-    param_grid['tfidf__min_df'] = [0.01, 0.02, 0.04, 0.08, 0.16]
-    grid = GridSearchCV(pipe, cv=3, param_grid=param_grid)
-    grid.fit(train, train_labels)
-    print("Grid search\nBest: %f using %s" % (grid.best_score_,
-                                              grid.best_params_))
-    means = grid.cv_results_['mean_test_score']
-    stds = grid.cv_results_['std_test_score']
-    params = grid.cv_results_['params']
-    for mean, std, param in zip(means, stds, params):
-        print("%f (%f) with: %r" % (mean, std, param))
+    scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=__folds)
+    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    report = classification_report(test_labels, preds)
+    f1_macro = f1_score(test_labels, preds, average='macro')
+    f1_micro = f1_score(test_labels, preds, average='micro')
+    print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
 
 
 def main():
@@ -118,15 +125,16 @@ def main():
     train, test, train_labels, test_labels = train_test_split(
         posts, labels, test_size=0.1, random_state=__random_state
     )
-    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, param_grid={})
-    __pipeline(LinearSVC(), train, test, train_labels, test_labels)
+    is_tuning = True
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, is_tuning=is_tuning)
+    __pipeline(LinearSVC(), train, test, train_labels, test_labels, is_tuning=is_tuning)
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
-    ), train, test, train_labels, test_labels)
+    ), train, test, train_labels, test_labels, is_tuning=is_tuning)
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
-    ), train, test, train_labels, test_labels)
+    ), train, test, train_labels, test_labels, is_tuning=is_tuning)
 
 
 def foo():
