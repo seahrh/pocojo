@@ -6,20 +6,21 @@ from operator import itemgetter
 from collections import OrderedDict
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.svm import LinearSVC
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn import metrics
+from sklearn.metrics import f1_score, classification_report
 import nltk
 from nltk.stem.porter import PorterStemmer
 from nltk.corpus import stopwords
-from scipy.sparse import save_npz
+import numpy as np
 from stringx.stringx import strip_punctuation
 
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 
+__random_state = 42
 __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
@@ -64,18 +65,26 @@ def __tokenizer(text):
     return stems
 
 
-def __pipeline(clf):
+def __pipeline(classifier, train, test, train_labels, test_labels):
+    print(f'#####  {classifier.__class__.__name__}  #####')
     pipe = Pipeline([
-        ('vect', TfidfVectorizer(
+        ('tfidf', TfidfVectorizer(
             tokenizer=__tokenizer,
             preprocessor=__preprocessor,
             stop_words=__stopwords,
             min_df=0.02,
             sublinear_tf=True
         )),
-        ('clf', clf),
+        ('classifier', classifier)
     ])
-    return pipe
+    scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=3)
+    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+    pipe.fit(train, train_labels)
+    preds = pipe.predict(test)
+    report = classification_report(test_labels, preds)
+    f1_macro = f1_score(test_labels, preds, average='macro')
+    f1_micro = f1_score(test_labels, preds, average='micro')
+    print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
 
 
 def main():
@@ -95,37 +104,17 @@ def main():
             labels.append(__label(n_comment))
     # print(f'labels={repr(labels[:10])}')
     train, test, train_labels, test_labels = train_test_split(
-        posts, labels, test_size=0.1, random_state=42
+        posts, labels, test_size=0.1, random_state=__random_state
     )
-    pipe = __pipeline(MultinomialNB())
-    pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    # print report
-    report = metrics.classification_report(test_labels, preds)
-    print(f'MultinomialNB\n{report}')
-    pipe = __pipeline(LinearSVC())
-    pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    # print report
-    report = metrics.classification_report(test_labels, preds)
-    print(f'LinearSVC\n{report}')
-    pipe = __pipeline(RandomForestClassifier(
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels)
+    __pipeline(LinearSVC(), train, test, train_labels, test_labels)
+    __pipeline(RandomForestClassifier(
         n_jobs=-1,
-        random_state=42
-    ))
-    pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    # print report
-    report = metrics.classification_report(test_labels, preds)
-    print(f'RandomForestClassifier\n{report}')
-    pipe = __pipeline(GradientBoostingClassifier(
-        random_state=42
-    ))
-    pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    # print report
-    report = metrics.classification_report(test_labels, preds)
-    print(f'GradientBoostingClassifier\n{report}')
+        random_state=__random_state
+    ), train, test, train_labels, test_labels)
+    __pipeline(GradientBoostingClassifier(
+        random_state=__random_state
+    ), train, test, train_labels, test_labels)
 
 
 def foo():
@@ -152,7 +141,6 @@ def foo():
     f = csv.writer(open("tmp/idf.csv", "wt"))
     for term, idf in term_to_idf:
         f.writerow([term, idf])
-    save_npz('tmp/ws', ws)
 
 
 main()
