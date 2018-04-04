@@ -65,7 +65,7 @@ def __tokenizer(text):
     return stems
 
 
-def __pipeline(classifier, train, test, train_labels, test_labels):
+def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None):
     print(f'#####  {classifier.__class__.__name__}  #####')
     pipe = Pipeline([
         ('tfidf', TfidfVectorizer(
@@ -77,14 +77,26 @@ def __pipeline(classifier, train, test, train_labels, test_labels):
         )),
         ('classifier', classifier)
     ])
-    scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=3)
-    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
-    pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    report = classification_report(test_labels, preds)
-    f1_macro = f1_score(test_labels, preds, average='macro')
-    f1_micro = f1_score(test_labels, preds, average='micro')
-    print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
+    if param_grid is None:
+        scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=3)
+        print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+        pipe.fit(train, train_labels)
+        preds = pipe.predict(test)
+        report = classification_report(test_labels, preds)
+        f1_macro = f1_score(test_labels, preds, average='macro')
+        f1_micro = f1_score(test_labels, preds, average='micro')
+        print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
+        return
+    param_grid['tfidf__min_df'] = [0.01, 0.02, 0.04, 0.08, 0.16]
+    grid = GridSearchCV(pipe, cv=3, param_grid=param_grid)
+    grid.fit(train, train_labels)
+    print("Grid search\nBest: %f using %s" % (grid.best_score_,
+                                              grid.best_params_))
+    means = grid.cv_results_['mean_test_score']
+    stds = grid.cv_results_['std_test_score']
+    params = grid.cv_results_['params']
+    for mean, std, param in zip(means, stds, params):
+        print("%f (%f) with: %r" % (mean, std, param))
 
 
 def main():
@@ -106,7 +118,7 @@ def main():
     train, test, train_labels, test_labels = train_test_split(
         posts, labels, test_size=0.1, random_state=__random_state
     )
-    __pipeline(MultinomialNB(), train, test, train_labels, test_labels)
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, param_grid={})
     __pipeline(LinearSVC(), train, test, train_labels, test_labels)
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
