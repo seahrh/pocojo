@@ -3,9 +3,9 @@ import glob
 import json
 from operator import itemgetter
 
-import pandas as pd
 import nltk
 import numpy as np
+import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -23,7 +23,7 @@ from timex.timex import Timer, seconds_to_hhmmss
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 
-__is_tuning = False
+__is_tuning = True
 __random_state = 42
 __folds = 3
 __stemmer = PorterStemmer()
@@ -44,6 +44,25 @@ class TextExtractor(BaseEstimator, TransformerMixin):
         # select the relevant column and return it as a numpy array
         # set the array type to be string
         return np.asarray(df[self.col]).astype(str)
+
+    def fit(self, *_):
+        return self
+
+
+class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
+    """Adapted from code by @zacstewart
+       https://github.com/zacstewart/kaggle_seeclickfix/blob/master/estimator.py
+       Also see Zac Stewart's excellent blogpost on pipelines:
+       http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
+       """
+
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+    def transform(self, df):
+        # select the relevant column and return it as a numpy array
+        filter_col = [col for col in df if col.startswith(self.prefix)]
+        return np.asarray(df[filter_col])
 
     def fit(self, *_):
         return self
@@ -72,6 +91,10 @@ def num_words(s):
 
 def ave_word_length(s):
     return np.mean([len(w) for w in s.split()])
+
+
+def noop(i):
+    return i
 
 
 def __comment_count(jo):
@@ -157,11 +180,15 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
             ])),
             ('num_words', Pipeline([
                 ('extract', TextExtractor(col='text')),
-                ('transform', Apply(fn=num_words)),  # length of string
+                ('transform', Apply(num_words)),  # length of string
             ])),
             ('ave_word_length', Pipeline([
                 ('extract', TextExtractor(col='text')),
-                ('transform', Apply(fn=ave_word_length))  # average word length
+                ('transform', Apply(ave_word_length))  # average word length
+            ])),
+            ('author_onehot', Pipeline([
+                ('extract', PrefixColumnExtractor(prefix='a_'))
+                # ('transform', Apply(noop))
             ]))
         ])),
         ('model', classifier)
@@ -169,7 +196,7 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     if is_tuning:
         if param_grid is None:
             param_grid = {}
-        param_grid['features__tfidf__vectorizer__min_df'] = [1, 0.01, 0.05]
+        param_grid['features__tfidf__vector__min_df'] = [1, 0.01, 0.05]
         __grid_search(pipe, param_grid, train, train_labels)
     else:
         __validate(pipe, train, train_labels)
@@ -180,14 +207,18 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
 
 
 def __posts(glob_pattern):
-    df = pd.DataFrame(columns=['text'])
+    df = pd.DataFrame(columns=['author', 'text'])
     # Sort by filename
     paths = sorted(glob.glob(glob_pattern))
     for p in paths:
         with open(p, 'rt') as f:
             s = f.read()
-            df = df.append({'text': s}, ignore_index=True)
-    # print(f'posts={repr(posts[:10])}')
+            i = s.find(' ')
+            author = s[:i]
+            text = s[i+1:]
+            df = df.append({'author': author, 'text': text}, ignore_index=True)
+    df = pd.get_dummies(df, columns=['author'], prefix=['a'])
+    # print(f'df.head={df.head(5)}')
     return df
 
 

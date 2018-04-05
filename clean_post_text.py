@@ -23,7 +23,10 @@ for p in paths:
         content = post['content']
         if not content:
             raise AssertionError('content must not be empty')
-        s = '{} {}'.format(title, content)
+        author = post['author']['display_name'].replace(' ', '').lower()
+        if not content:
+            raise AssertionError('author must not be empty')
+        s = '{} {} {}'.format(author, title, content)
         s = to_ascii_str(strip_html(s))
         # print(f'{repr(s)}\n')
         pid = path.basename(p)[1:-5]
