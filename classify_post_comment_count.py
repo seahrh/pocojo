@@ -1,20 +1,20 @@
-import glob
 import csv
+import glob
 import json
-from os import path
 from operator import itemgetter
-from collections import OrderedDict
+
+import nltk
+import numpy as np
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import Pipeline
+from sklearn.metrics import f1_score, classification_report
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import f1_score, classification_report
-import nltk
-from nltk.stem.porter import PorterStemmer
-from nltk.corpus import stopwords
-import numpy as np
+
 from stringx.stringx import strip_punctuation
 
 posts_glob_pattern = 'posts_txt/*.txt'
@@ -78,6 +78,19 @@ def __grid_search(pipeline, param_grid, train, train_labels):
         print("%f (%f) with: %r" % (mean, std, param))
 
 
+def __test(pipeline, test, test_labels):
+    preds = pipeline.predict(test)
+    report = classification_report(test_labels, preds)
+    f1_mac = f1_score(test_labels, preds, average='macro')
+    f1_mic = f1_score(test_labels, preds, average='micro')
+    print(f'Test result\nf1_macro={f1_mac}\nf1_micro={f1_mic}\n{report}')
+
+
+def __validate(pipeline, train, train_labels):
+    scores = cross_val_score(pipeline, train, train_labels, scoring='f1_macro', cv=__folds)
+    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+
+
 def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None, is_tuning=False):
     print(f'#####  {classifier.__class__.__name__}  #####')
     pipe = Pipeline([
@@ -96,32 +109,40 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
         param_grid['tfidf__min_df'] = [1, 0.01, 0.05, 0.10]
         __grid_search(pipe, param_grid, train, train_labels)
         return
-    scores = cross_val_score(pipe, train, train_labels, scoring='f1_macro', cv=__folds)
-    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+    __validate(pipe, train, train_labels)
     pipe.fit(train, train_labels)
-    preds = pipe.predict(test)
-    report = classification_report(test_labels, preds)
-    f1_macro = f1_score(test_labels, preds, average='macro')
-    f1_micro = f1_score(test_labels, preds, average='micro')
-    print(f'Test result\nf1_macro={f1_macro}\nf1_micro={f1_micro}\n{report}')
+    __save_idf(pipe.named_steps['tfidf'])
+    __test(pipe, test, test_labels)
 
 
-def main():
+def __posts(glob_pattern):
     posts = list()
-    paths = sorted(glob.glob(posts_glob_pattern))
+    # Sort by filename
+    paths = sorted(glob.glob(glob_pattern))
     for p in paths:
         with open(p, 'rt') as f:
             s = f.read()
             posts.append(s)
     # print(f'posts={repr(posts[:10])}')
+    return posts
+
+
+def __labels(glob_pattern):
     labels = list()
-    paths = sorted(glob.glob(comments_glob_pattern))
+    # Sort by filename
+    paths = sorted(glob.glob(glob_pattern))
     for p in paths:
         with open(p, 'rt') as f:
             _jo = json.load(f)
             n_comment = comment_count(_jo)
             labels.append(__label(n_comment))
     # print(f'labels={repr(labels[:10])}')
+    return labels
+
+
+def main():
+    posts = __posts(posts_glob_pattern)
+    labels = __labels(comments_glob_pattern)
     train, test, train_labels, test_labels = train_test_split(
         posts, labels, test_size=0.1, random_state=__random_state
     )
@@ -137,24 +158,8 @@ def main():
     ), train, test, train_labels, test_labels, is_tuning=is_tuning)
 
 
-def foo():
-    pid_to_tokens = OrderedDict()
-    paths = glob.glob(posts_glob_pattern)
-    for p in paths:
-        pid = path.basename(p)[1:-4]
-        with open(p, 'rt') as f:
-            s = f.read()
-            pid_to_tokens[pid] = s
-    tf_idf = TfidfVectorizer(
-        tokenizer=__tokenizer,
-        preprocessor=__preprocessor,
-        stop_words=__stopwords,
-        min_df=0.1,
-        sublinear_tf=True
-    )
-    ws = tf_idf.fit_transform(pid_to_tokens.values())
+def __save_idf(tf_idf):
     terms = tf_idf.get_feature_names()
-    print(f'ws.shape={repr(ws.shape)}')
     idf = tf_idf.idf_
     term_to_idf = sorted(zip(terms, idf), key=itemgetter(1))
     print(f'term_to_idf.len={repr(len(term_to_idf))}')
