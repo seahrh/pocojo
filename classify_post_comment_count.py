@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
-from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import f1_score, classification_report
@@ -19,6 +18,7 @@ from sklearn.svm import LinearSVC
 
 from stringx.stringx import strip_punctuation
 from timex.timex import Timer, seconds_to_hhmmss
+from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
 
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
@@ -30,71 +30,12 @@ __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
 
-class TextExtractor(BaseEstimator, TransformerMixin):
-    """Adapted from code by @zacstewart
-       https://github.com/zacstewart/kaggle_seeclickfix/blob/master/estimator.py
-       Also see Zac Stewart's excellent blogpost on pipelines:
-       http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
-       """
-
-    def __init__(self, col):
-        self.col = col
-
-    def transform(self, df):
-        # select the relevant column and return it as a numpy array
-        # set the array type to be string
-        return np.asarray(df[self.col]).astype(str)
-
-    def fit(self, *_):
-        return self
-
-
-class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
-    """Adapted from code by @zacstewart
-       https://github.com/zacstewart/kaggle_seeclickfix/blob/master/estimator.py
-       Also see Zac Stewart's excellent blogpost on pipelines:
-       http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
-       """
-
-    def __init__(self, prefix):
-        self.prefix = prefix
-
-    def transform(self, df):
-        # select the relevant column and return it as a numpy array
-        filter_col = [col for col in df if col.startswith(self.prefix)]
-        return np.asarray(df[filter_col])
-
-    def fit(self, *_):
-        return self
-
-
-class Apply(BaseEstimator, TransformerMixin):
-    """Applies a function f element-wise to the numpy array
-    """
-
-    def __init__(self, fn):
-        self.fn = fn
-
-    def transform(self, data):
-        # note: reshaping is necessary because otherwise sklearn
-        # interprets 1-d array as a single sample
-        fnv = np.vectorize(self.fn)
-        return fnv(data.reshape(data.size, 1))
-
-    def fit(self, *_):
-        return self
-
-
 def num_words(s):
     return len(s.split())
 
 
 def ave_word_length(s):
     return np.mean([len(w) for w in s.split()])
-
-
-def noop(i):
-    return i
 
 
 def __comment_count(jo):
@@ -188,7 +129,6 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
             ])),
             ('author_onehot', Pipeline([
                 ('extract', PrefixColumnExtractor(prefix='a_'))
-                # ('transform', Apply(noop))
             ]))
         ])),
         ('model', classifier)
