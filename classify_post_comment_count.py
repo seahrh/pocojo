@@ -3,29 +3,43 @@ import glob
 import json
 from operator import itemgetter
 
+import pandas as pd
 import nltk
 import numpy as np
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import f1_score, classification_report
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 
 from stringx.stringx import strip_punctuation
-from timex import Timer
-from timex.timex import seconds_to_hhmmss
+from timex.timex import Timer, seconds_to_hhmmss
 
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 
+__is_tuning = False
 __random_state = 42
 __folds = 3
 __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
+
+
+class ColumnExtractor(BaseEstimator, TransformerMixin):
+    def __init__(self, col):
+        self.col = col
+
+    def transform(self, df):
+        return df[self.col]
+
+    def fit(self, df, y=None):
+        return self  # noop
 
 
 def __comment_count(jo):
@@ -98,39 +112,44 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     timer = Timer()
     timer.start()
     pipe = Pipeline([
-        ('tfidf', TfidfVectorizer(
-            tokenizer=__tokenizer,
-            preprocessor=__preprocessor,
-            stop_words=__stopwords,
-            min_df=0.02,
-            sublinear_tf=True
-        )),
-        ('classifier', classifier)
+        ('features', FeatureUnion([
+            ('tfidf', Pipeline([
+                ('extract', ColumnExtractor(col='text')),
+                ('vector', TfidfVectorizer(
+                    tokenizer=__tokenizer,
+                    preprocessor=__preprocessor,
+                    stop_words=__stopwords,
+                    min_df=0.01,
+                    sublinear_tf=True
+                ))
+            ]))
+        ])),
+        ('model', classifier)
     ])
     if is_tuning:
         if param_grid is None:
             param_grid = {}
-        param_grid['tfidf__min_df'] = [1, 0.01, 0.05]
+        param_grid['features__tfidf__vectorizer__min_df'] = [1, 0.01, 0.05]
         __grid_search(pipe, param_grid, train, train_labels)
     else:
         __validate(pipe, train, train_labels)
         pipe.fit(train, train_labels)
-        __save_idf(pipe.named_steps['tfidf'])
+        __save_idf(pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'])
         __test(pipe, test, test_labels)
-    timer.end()
+    timer.stop()
     print(f'Time taken {seconds_to_hhmmss(timer.elapsed)}')
 
 
 def __posts(glob_pattern):
-    posts = list()
+    df = pd.DataFrame(columns=['text'])
     # Sort by filename
     paths = sorted(glob.glob(glob_pattern))
     for p in paths:
         with open(p, 'rt') as f:
             s = f.read()
-            posts.append(s)
+            df = df.append({'text': s}, ignore_index=True)
     # print(f'posts={repr(posts[:10])}')
-    return posts
+    return df
 
 
 def __labels(glob_pattern):
@@ -152,16 +171,15 @@ def main():
     train, test, train_labels, test_labels = train_test_split(
         posts, labels, test_size=0.1, random_state=__random_state
     )
-    is_tuning = True
-    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, is_tuning=is_tuning)
-    __pipeline(LinearSVC(), train, test, train_labels, test_labels, is_tuning=is_tuning)
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+    __pipeline(LinearSVC(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
-    ), train, test, train_labels, test_labels, is_tuning=is_tuning)
+    ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
-    ), train, test, train_labels, test_labels, is_tuning=is_tuning)
+    ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
 
 
 def __save_idf(tf_idf):
