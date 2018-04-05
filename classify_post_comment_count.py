@@ -16,6 +16,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import LinearSVC
 
 from stringx.stringx import strip_punctuation
+from timex import Timer
+from timex.timex import seconds_to_hhmmss
 
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
@@ -26,7 +28,7 @@ __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
 
-def comment_count(jo):
+def __comment_count(jo):
     comments = jo['comments']
     n = 0
     for i, comment in enumerate(comments):
@@ -67,7 +69,7 @@ def __tokenizer(text):
 
 
 def __grid_search(pipeline, param_grid, train, train_labels):
-    grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid)
+    grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring='f1_macro')
     grid.fit(train, train_labels)
     print("Grid search\nBest: %f using %s" % (grid.best_score_,
                                               grid.best_params_))
@@ -93,6 +95,8 @@ def __validate(pipeline, train, train_labels):
 
 def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None, is_tuning=False):
     print(f'#####  {classifier.__class__.__name__}  #####')
+    timer = Timer()
+    timer.start()
     pipe = Pipeline([
         ('tfidf', TfidfVectorizer(
             tokenizer=__tokenizer,
@@ -106,13 +110,15 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     if is_tuning:
         if param_grid is None:
             param_grid = {}
-        param_grid['tfidf__min_df'] = [1, 0.01, 0.05, 0.10]
+        param_grid['tfidf__min_df'] = [1, 0.01, 0.05]
         __grid_search(pipe, param_grid, train, train_labels)
-        return
-    __validate(pipe, train, train_labels)
-    pipe.fit(train, train_labels)
-    __save_idf(pipe.named_steps['tfidf'])
-    __test(pipe, test, test_labels)
+    else:
+        __validate(pipe, train, train_labels)
+        pipe.fit(train, train_labels)
+        __save_idf(pipe.named_steps['tfidf'])
+        __test(pipe, test, test_labels)
+    timer.end()
+    print(f'Time taken {seconds_to_hhmmss(timer.elapsed)}')
 
 
 def __posts(glob_pattern):
@@ -134,7 +140,7 @@ def __labels(glob_pattern):
     for p in paths:
         with open(p, 'rt') as f:
             _jo = json.load(f)
-            n_comment = comment_count(_jo)
+            n_comment = __comment_count(_jo)
             labels.append(__label(n_comment))
     # print(f'labels={repr(labels[:10])}')
     return labels
