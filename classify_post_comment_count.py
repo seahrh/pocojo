@@ -10,7 +10,6 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import f1_score, classification_report
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
@@ -31,15 +30,48 @@ __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
 
-class ColumnExtractor(BaseEstimator, TransformerMixin):
+class TextExtractor(BaseEstimator, TransformerMixin):
+    """Adapted from code by @zacstewart
+       https://github.com/zacstewart/kaggle_seeclickfix/blob/master/estimator.py
+       Also see Zac Stewart's excellent blogpost on pipelines:
+       http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
+       """
+
     def __init__(self, col):
         self.col = col
 
     def transform(self, df):
-        return df[self.col]
+        # select the relevant column and return it as a numpy array
+        # set the array type to be string
+        return np.asarray(df[self.col]).astype(str)
 
-    def fit(self, df, y=None):
-        return self  # noop
+    def fit(self, *_):
+        return self
+
+
+class Apply(BaseEstimator, TransformerMixin):
+    """Applies a function f element-wise to the numpy array
+    """
+
+    def __init__(self, fn):
+        self.fn = fn
+
+    def transform(self, data):
+        # note: reshaping is necessary because otherwise sklearn
+        # interprets 1-d array as a single sample
+        fnv = np.vectorize(self.fn)
+        return fnv(data.reshape(data.size, 1))
+
+    def fit(self, *_):
+        return self
+
+
+def num_words(s):
+    return len(s.split())
+
+
+def ave_word_length(s):
+    return np.mean([len(w) for w in s.split()])
 
 
 def __comment_count(jo):
@@ -114,7 +146,7 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     pipe = Pipeline([
         ('features', FeatureUnion([
             ('tfidf', Pipeline([
-                ('extract', ColumnExtractor(col='text')),
+                ('extract', TextExtractor(col='text')),
                 ('vector', TfidfVectorizer(
                     tokenizer=__tokenizer,
                     preprocessor=__preprocessor,
@@ -122,6 +154,14 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
                     min_df=0.01,
                     sublinear_tf=True
                 ))
+            ])),
+            ('num_words', Pipeline([
+                ('extract', TextExtractor(col='text')),
+                ('transform', Apply(fn=num_words)),  # length of string
+            ])),
+            ('ave_word_length', Pipeline([
+                ('extract', TextExtractor(col='text')),
+                ('transform', Apply(fn=ave_word_length))  # average word length
             ]))
         ])),
         ('model', classifier)
@@ -134,7 +174,6 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     else:
         __validate(pipe, train, train_labels)
         pipe.fit(train, train_labels)
-        __save_idf(pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'])
         __test(pipe, test, test_labels)
     timer.stop()
     print(f'Time taken {seconds_to_hhmmss(timer.elapsed)}')
