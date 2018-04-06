@@ -58,6 +58,9 @@ Comment count by range interval (based on quartile analysis)
 * Document frequency thresholding
 * Count comments by post
 
+Sketch of how features are combined
+![](docs/features.svg?raw=true)
+
 ### Classifiers
 
 * Multinomial Naive Bayes
