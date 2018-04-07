@@ -59,7 +59,7 @@ Comment count by range interval (based on quartile analysis)
 * Count comments by post
 
 Sketch of how features are combined
-![](docs/features.svg?raw=true)
+![](docs/features.svg?sanitize=true)
 
 ### Classifiers
 
