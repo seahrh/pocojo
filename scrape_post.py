@@ -4,8 +4,8 @@ from time import sleep
 from etl import etl
 
 url_template = 'https://www.techinasia.com/wp-json/techinasia/2.0/posts/{}'
-pid_min = 209219
-pid_max = 289999
+pid_min = 48135
+pid_max = 49999
 sleep_sec_min = 0.3
 sleep_sec_max = 1
 file_path_template = 'posts/p{}.json'
