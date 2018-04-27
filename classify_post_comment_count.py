@@ -23,7 +23,7 @@ from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 
-__is_tuning = True
+__is_tuning = False
 __random_state = 42
 __folds = 3
 __stemmer = PorterStemmer()
@@ -175,7 +175,7 @@ def __labels(glob_pattern):
     return labels
 
 
-def main():
+def __main():
     posts = __posts(posts_glob_pattern)
     labels = __labels(comments_glob_pattern)
     train, test, train_labels, test_labels = train_test_split(
@@ -202,4 +202,7 @@ def __save_idf(tf_idf):
         f.writerow([term, idf])
 
 
-main()
+if __name__ == '__main__':
+    import sys
+    __is_tuning = sys.argv[1].lower() == 'true'
+    __main()

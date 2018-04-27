@@ -9,6 +9,7 @@ class TestMarkupRemover(unittest.TestCase):
         self.assertEqual(strip_html('ab'), 'ab')
         self.assertEqual(strip_html('<p>p</p>'), 'p')
         self.assertEqual(strip_html('<p class="blue">p</p>'), 'p')
+        self.assertEqual(strip_html('<p>1</p> <br>2 <p>3</p>'), '1 2 3')
         self.assertEqual(strip_html('a&;b'), 'a&;b')
         self.assertEqual(strip_html('a &; b'), 'a &; b')
         self.assertEqual(strip_html('a &amp; b'), 'a & b')
