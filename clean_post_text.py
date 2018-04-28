@@ -48,10 +48,19 @@ def __save_text_file(file_path, text):
         out.write(text)
 
 
+def __pids(paths):
+    res = []
+    for p in paths:
+        pid = path.basename(p)[1:-5]
+        res.append(pid)
+    return res
+
+
 def __main():
-    df = pd.DataFrame(columns=['pid', 'author', 'text'])
-    n = 0
     paths = glob.glob(posts_glob_pattern)
+    pids = __pids(paths)
+    df = pd.DataFrame(columns=['author', 'text'], index=pids)
+    n = 0
     for p in paths:
         with open(p, 'rt') as f:
             pid = path.basename(p)[1:-5]
@@ -62,11 +71,10 @@ def __main():
             content = __content(jo)
             author = __author(jo)
             text = '{} {}'.format(title, content)
-            df = df.append({
-                'pid': pid,
+            df.loc[pid] = pd.Series({
                 'author': author,
                 'text': text
-            }, ignore_index=True)
+            })
             # file_path = file_path_template.format(pid)
             # __save_text_file(file_path, text)
     df.to_csv("data.tsv", sep='\t')
