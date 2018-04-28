@@ -77,7 +77,8 @@ def __main():
             })
             # file_path = file_path_template.format(pid)
             # __save_text_file(file_path, text)
-    df.to_csv("data.tsv", sep='\t')
+    df = pd.get_dummies(df, columns=['author'], prefix=['author'])
+    df.to_csv("tmp/data.tsv", sep='\t')
 
 
 if __name__ == '__main__':
