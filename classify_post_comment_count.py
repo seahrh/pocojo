@@ -8,11 +8,12 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import f1_score, classification_report
+from sklearn.metrics import f1_score, classification_report, r2_score, median_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
+from sklearn.linear_model import Ridge
 
 from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
 from stringx.stringx import strip_punctuation
@@ -69,20 +70,31 @@ def __grid_search(pipeline, param_grid, train, train_labels):
         print("%f (%f) with: %r" % (mean, std, param))
 
 
-def __test(pipeline, test, test_labels):
+def __test_classification(pipeline, test, test_y):
+    print('Testing...')
     preds = pipeline.predict(test)
-    report = classification_report(test_labels, preds)
-    f1_mac = f1_score(test_labels, preds, average='macro')
-    f1_mic = f1_score(test_labels, preds, average='micro')
+    report = classification_report(test_y, preds)
+    f1_mac = f1_score(test_y, preds, average='macro')
+    f1_mic = f1_score(test_y, preds, average='micro')
     print(f'Test result\nf1_macro={f1_mac}\nf1_micro={f1_mic}\n{report}')
 
 
-def __validate(pipeline, train, train_labels):
-    scores = cross_val_score(pipeline, train, train_labels, scoring='f1_macro', cv=__folds)
-    print(f'Validation result\nf1_macro={np.median(scores)} (median)')
+def __test(pipeline, test, test_y):
+    print('Testing...')
+    preds = pipeline.predict(test)
+    r2 = r2_score(test_y, preds)
+    mae = median_absolute_error(test_y, preds)
+    print(f'Test result: r2={r2}, mae={mae}')
 
 
-def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=None, is_tuning=False):
+def __validate(pipeline, train, train_y, scoring):
+    print('Validating...')
+    scores = cross_val_score(pipeline, train, train_y, scoring=scoring, cv=__folds)
+    print(f'Validation result: {scoring}={np.median(scores)} (median)')
+
+
+def __pipeline(classifier, train, test, train_labels, test_labels, scoring,
+               param_grid=None, is_tuning=False):
     print(f'#####  {classifier.__class__.__name__}  #####')
     timer = Timer()
     timer.start()
@@ -97,17 +109,6 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
                     min_df=0.01,
                     sublinear_tf=True
                 ))
-            ])),
-            ('num_words', Pipeline([
-                ('extract', TextExtractor(col='text')),
-                ('transform', Apply(num_words)),  # length of string
-            ])),
-            ('ave_word_length', Pipeline([
-                ('extract', TextExtractor(col='text')),
-                ('transform', Apply(ave_word_length))  # average word length
-            ])),
-            ('author_onehot', Pipeline([
-                ('extract', PrefixColumnExtractor(prefix='a_'))
             ]))
         ])),
         ('model', classifier)
@@ -118,7 +119,7 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
         param_grid['features__tfidf__vector__min_df'] = [1, 0.01, 0.05]
         __grid_search(pipe, param_grid, train, train_labels)
     else:
-        __validate(pipe, train, train_labels)
+        __validate(pipe, train, train_labels, scoring)
         pipe.fit(train, train_labels)
         __test(pipe, test, test_labels)
     timer.stop()
@@ -126,35 +127,41 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
 
 
 def __multinomial_nb(train, test, train_labels, test_labels):
-    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, scoring='f1_macro',
+               is_tuning=__is_tuning)
 
 
 def __linear_svc(train, test, train_labels, test_labels):
-    __pipeline(LinearSVC(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+    __pipeline(LinearSVC(), train, test, train_labels, test_labels, scoring='f1_macro',
+               is_tuning=__is_tuning)
 
 
 def __random_forest(train, test, train_labels, test_labels):
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
-    ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+    ), train, test, train_labels, test_labels, scoring='f1_macro', is_tuning=__is_tuning)
 
 
 def __gradient_boosting(train, test, train_labels, test_labels):
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
-    ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+    ), train, test, train_labels, test_labels, scoring='f1_macro', is_tuning=__is_tuning)
 
 
 def __main():
     df = pd.read_csv(__in_file_path, sep=__in_file_separator)
-    labels = df.loc[:, ['comment_count']]
-    data = df.iloc[:, 2:]
-    print(f'labels columns={labels.columns.values.tolist()}, shape={labels.shape}')
-    print(f'data top_columns={data.columns.values.tolist()[:10]}, shape={data.shape}')
-    train, test, train_labels, test_labels = train_test_split(
-        data, labels, test_size=0.1, random_state=__random_state
+    ys = df.loc[:, ['comment_count']]
+    # Exclude the first 2 columns: row index, label
+    xs = df.iloc[:, 2:]
+    print(f'ys columns={ys.columns.values.tolist()}, shape={ys.shape}')
+    print(f'xs top_columns={xs.columns.values.tolist()[:10]}, shape={xs.shape}')
+    train, test, train_y, test_y = train_test_split(
+        xs, ys, test_size=0.1, random_state=__random_state
     )
+    __pipeline(Ridge(
+        alpha=1.0
+    ), train, test, train_y, test_y, scoring='r2', is_tuning=__is_tuning)
 
 
 def __save_idf(tf_idf):
