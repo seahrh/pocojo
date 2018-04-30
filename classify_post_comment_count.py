@@ -1,6 +1,4 @@
 import csv
-import glob
-import json
 from operator import itemgetter
 
 import nltk
@@ -16,13 +14,14 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 
+from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
 from stringx.stringx import strip_punctuation
 from timex.timex import Timer, seconds_to_hhmmss
-from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
 
 posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
-
+__in_file_path = 'tmp/data.tsv'
+__in_file_separator = '\t'
 __is_tuning = False
 __random_state = 42
 __folds = 3
@@ -36,26 +35,6 @@ def num_words(s):
 
 def ave_word_length(s):
     return np.mean([len(w) for w in s.split()])
-
-
-def __comment_count(jo):
-    comments = jo['comments']
-    n = 0
-    for i, comment in enumerate(comments):
-        n += 1
-        for _ in comment['children']:
-            n += 1
-    return n
-
-
-def __label(n_comment):
-    if n_comment < 0:
-        raise ValueError('comment count must not be less than 0')
-    if 0 <= n_comment <= 2:
-        return 'lo'
-    if 3 <= n_comment <= 5:
-        return 'mi'
-    return 'hi'
 
 
 def __preprocessor(text):
@@ -146,50 +125,36 @@ def __pipeline(classifier, train, test, train_labels, test_labels, param_grid=No
     print(f'Time taken {seconds_to_hhmmss(timer.elapsed)}')
 
 
-def __posts(glob_pattern):
-    df = pd.DataFrame(columns=['author', 'text'])
-    # Sort by filename
-    paths = sorted(glob.glob(glob_pattern))
-    for p in paths:
-        with open(p, 'rt') as f:
-            s = f.read()
-            i = s.find(' ')
-            author = s[:i]
-            text = s[i+1:]
-            df = df.append({'author': author, 'text': text}, ignore_index=True)
-    df = pd.get_dummies(df, columns=['author'], prefix=['a'])
-    # print(f'df.head={df.head(5)}')
-    return df
-
-
-def __labels(glob_pattern):
-    labels = list()
-    # Sort by filename
-    paths = sorted(glob.glob(glob_pattern))
-    for p in paths:
-        with open(p, 'rt') as f:
-            _jo = json.load(f)
-            n_comment = __comment_count(_jo)
-            labels.append(__label(n_comment))
-    # print(f'labels={repr(labels[:10])}')
-    return labels
-
-
-def __main():
-    posts = __posts(posts_glob_pattern)
-    labels = __labels(comments_glob_pattern)
-    train, test, train_labels, test_labels = train_test_split(
-        posts, labels, test_size=0.1, random_state=__random_state
-    )
+def __multinomial_nb(train, test, train_labels, test_labels):
     __pipeline(MultinomialNB(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+
+
+def __linear_svc(train, test, train_labels, test_labels):
     __pipeline(LinearSVC(), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+
+
+def __random_forest(train, test, train_labels, test_labels):
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
     ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+
+
+def __gradient_boosting(train, test, train_labels, test_labels):
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
     ), train, test, train_labels, test_labels, is_tuning=__is_tuning)
+
+
+def __main():
+    df = pd.read_csv(__in_file_path, sep=__in_file_separator)
+    labels = df.loc[:, ['comment_count']]
+    data = df.iloc[:, 2:]
+    print(f'labels columns={labels.columns.values.tolist()}, shape={labels.shape}')
+    print(f'data top_columns={data.columns.values.tolist()[:10]}, shape={data.shape}')
+    train, test, train_labels, test_labels = train_test_split(
+        data, labels, test_size=0.1, random_state=__random_state
+    )
 
 
 def __save_idf(tf_idf):
@@ -204,5 +169,6 @@ def __save_idf(tf_idf):
 
 if __name__ == '__main__':
     import sys
+
     __is_tuning = sys.argv[1].lower() == 'true'
     __main()
