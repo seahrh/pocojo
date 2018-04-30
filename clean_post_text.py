@@ -61,13 +61,8 @@ def __pids(paths):
 def __comment_count(file_path):
     with open(file_path, 'rt') as f:
         jo = json.load(f)
-        comments = jo['comments']
-        n = 0
-        for i, comment in enumerate(comments):
-            n += 1
-            for _ in comment['children']:
-                n += 1
-        return n
+        res = jo['total']
+        return int(res)
 
 
 def __main():
@@ -81,7 +76,7 @@ def __main():
             n += 1
             comment_path = __comment_path_template.format(pid)
             comment_count = __comment_count(comment_path)
-            print(f'n={n}, pid={pid}, comment_count={comment_count}')
+            print(f'n={n}, pid={repr(pid)}, comment_count={repr(comment_count)}')
             jo = json.load(f)
             title = __title(jo)
             content = __content(jo)
