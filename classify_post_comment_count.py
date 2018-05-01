@@ -45,17 +45,10 @@ def __preprocessor(text):
     return s
 
 
-def __stem_tokens(tokens, stemmer):
-    stemmed = []
-    for t in tokens:
-        stemmed.append(stemmer.stem(t))
-    return stemmed
-
-
 def __tokenizer(text):
     tokens = nltk.word_tokenize(text)
     tokens = [t for t in tokens if not is_number(t)]
-    stems = __stem_tokens(tokens, __stemmer)
+    stems = [__stemmer.stem(t) for t in tokens]
     return stems
 
 
@@ -88,7 +81,7 @@ def __test(pipeline, test, test_y):
     print(f'Test result: r2={r2}, mae={mae}')
 
 
-def __train(pipeline, train, train_y, transformers=None):
+def __train(pipeline, train, train_y):
     print('Training...')
     timer = Timer()
     timer.start()
@@ -127,7 +120,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
         ])),
         ('model', classifier)
     ])
-    print(f'pipeline steps={repr(pipe.steps)}')
+    # print(f'pipeline steps={repr(pipe.steps)}')
     if is_tuning:
         if param_grid is None:
             param_grid = {}
@@ -135,12 +128,12 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
         __grid_search(pipe, param_grid, train, train_y)
     else:
         #__validate(pipe, train, train_y, scoring)
-        __train(pipe, train, train_y, transformers=['features__tfidf__vector'])
+        __train(pipe, train, train_y)
         fs = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'].get_feature_names()
-        print(f'fs={fs[:100]}, len={len(fs)}')
+        print(f'fs len={len(fs)}, some={fs[::10]}')
         coefs = pipe.named_steps['model'].coef_
         intercept = pipe.named_steps['model'].intercept_
-        print(f'shape={np.shape(coefs)}, some_coefs={coefs[:10]}, intercept={intercept}')
+        print(f'coefs shape={np.shape(coefs)}, some={coefs[::10]}, intercept={intercept}')
         __test(pipe, test, test_y)
     timer.stop()
     print(f'__pipeline took {seconds_to_hhmmss(timer.elapsed)}')

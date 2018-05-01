@@ -38,8 +38,16 @@ def to_ascii_str(u):
 
 
 def is_number(s):
+    """Based on https://stackoverflow.com/a/40097699/519951
+
+    :param s: string
+    :return: True if string is a number
+    """
+    res = True
     try:
-        float(s)
+        num = float(s)
+        # check for "nan" floats
+        res = num == num   # or use `math.isnan(num)`
     except ValueError:
-        return False
-    return True
+        res = False
+    return res
