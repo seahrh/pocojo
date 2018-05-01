@@ -15,8 +15,8 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import Ridge
 
-from sklearnpd.sklearnpd import TextExtractor, PrefixColumnExtractor, Apply
-from stringx.stringx import strip_punctuation
+from sklearnpd.sklearnpd import TextExtractor
+from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
 
 posts_glob_pattern = 'posts_txt/*.txt'
@@ -54,6 +54,7 @@ def __stem_tokens(tokens, stemmer):
 
 def __tokenizer(text):
     tokens = nltk.word_tokenize(text)
+    tokens = [t for t in tokens if not is_number(t)]
     stems = __stem_tokens(tokens, __stemmer)
     return stems
 
@@ -87,13 +88,26 @@ def __test(pipeline, test, test_y):
     print(f'Test result: r2={r2}, mae={mae}')
 
 
+def __train(pipeline, train, train_y, transformers=None):
+    print('Training...')
+    timer = Timer()
+    timer.start()
+    pipeline.fit(train, train_y)
+    timer.stop()
+    print(f'__train took {seconds_to_hhmmss(timer.elapsed)}')
+
+
 def __validate(pipeline, train, train_y, scoring):
     print('Validating...')
+    timer = Timer()
+    timer.start()
     scores = cross_val_score(pipeline, train, train_y, scoring=scoring, cv=__folds)
     print(f'Validation result: {scoring}={np.median(scores)} (median)')
+    timer.stop()
+    print(f'__validate took {seconds_to_hhmmss(timer.elapsed)}')
 
 
-def __pipeline(classifier, train, test, train_labels, test_labels, scoring,
+def __pipeline(classifier, train, test, train_y, test_y, scoring,
                param_grid=None, is_tuning=False):
     print(f'#####  {classifier.__class__.__name__}  #####')
     timer = Timer()
@@ -113,17 +127,23 @@ def __pipeline(classifier, train, test, train_labels, test_labels, scoring,
         ])),
         ('model', classifier)
     ])
+    print(f'pipeline steps={repr(pipe.steps)}')
     if is_tuning:
         if param_grid is None:
             param_grid = {}
         param_grid['features__tfidf__vector__min_df'] = [1, 0.01, 0.05]
-        __grid_search(pipe, param_grid, train, train_labels)
+        __grid_search(pipe, param_grid, train, train_y)
     else:
-        __validate(pipe, train, train_labels, scoring)
-        pipe.fit(train, train_labels)
-        __test(pipe, test, test_labels)
+        #__validate(pipe, train, train_y, scoring)
+        __train(pipe, train, train_y, transformers=['features__tfidf__vector'])
+        fs = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'].get_feature_names()
+        print(f'fs={fs[:100]}, len={len(fs)}')
+        coefs = pipe.named_steps['model'].coef_
+        intercept = pipe.named_steps['model'].intercept_
+        print(f'shape={np.shape(coefs)}, some_coefs={coefs[:10]}, intercept={intercept}')
+        __test(pipe, test, test_y)
     timer.stop()
-    print(f'Time taken {seconds_to_hhmmss(timer.elapsed)}')
+    print(f'__pipeline took {seconds_to_hhmmss(timer.elapsed)}')
 
 
 def __multinomial_nb(train, test, train_labels, test_labels):

@@ -35,3 +35,11 @@ def to_ascii_str(u):
     Based on https://gist.github.com/j4mie/557354
     """
     return to_str(normalize("NFKD", u).encode('ASCII', 'ignore'))
+
+
+def is_number(s):
+    try:
+        float(s)
+    except ValueError:
+        return False
+    return True
