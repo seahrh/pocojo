@@ -14,6 +14,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import Ridge
+from sklearn.preprocessing import MaxAbsScaler
 
 from sklearnpd.sklearnpd import TextExtractor
 from stringx.stringx import strip_punctuation, is_number
@@ -116,6 +117,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
                     min_df=0.01,
                     sublinear_tf=True
                 ))
+                #('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
@@ -127,14 +129,15 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
         param_grid['features__tfidf__vector__min_df'] = [1, 0.01, 0.05]
         __grid_search(pipe, param_grid, train, train_y)
     else:
-        #__validate(pipe, train, train_y, scoring)
         __train(pipe, train, train_y)
         fs = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'].get_feature_names()
-        print(f'fs len={len(fs)}, some={fs[::10]}')
+        print(f'fs len={len(fs)}')
+        # print(f'fs some={fs[::3]}')
         coefs = pipe.named_steps['model'].coef_
         intercept = pipe.named_steps['model'].intercept_
-        print(f'coefs shape={np.shape(coefs)}, some={coefs[::10]}, intercept={intercept}')
-        __test(pipe, test, test_y)
+        print(f'coefs shape={np.shape(coefs)}, intercept={intercept}')
+        __validate(pipe, train, train_y, scoring)
+        # __test(pipe, test, test_y)
     timer.stop()
     print(f'__pipeline took {seconds_to_hhmmss(timer.elapsed)}')
 
@@ -167,8 +170,8 @@ def __main():
     ys = df.loc[:, ['comment_count']]
     # Exclude the first 2 columns: row index, label
     xs = df.iloc[:, 2:]
-    print(f'ys columns={ys.columns.values.tolist()}, shape={ys.shape}')
-    print(f'xs top_columns={xs.columns.values.tolist()[:10]}, shape={xs.shape}')
+    print(f'ys shape={ys.shape}, columns={ys.columns.values.tolist()}')
+    print(f'xs shape={xs.shape}, head={xs.columns.values.tolist()[:10]}')
     train, test, train_y, test_y = train_test_split(
         xs, ys, test_size=0.1, random_state=__random_state
     )
