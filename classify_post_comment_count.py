@@ -8,13 +8,12 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import Ridge
 from sklearn.metrics import f1_score, classification_report, r2_score, median_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import MaxAbsScaler
 
 from sklearnpd.sklearnpd import TextExtractor
 from stringx.stringx import strip_punctuation, is_number
@@ -53,8 +52,8 @@ def __tokenizer(text):
     return stems
 
 
-def __grid_search(pipeline, param_grid, train, train_labels):
-    grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring='f1_macro')
+def __grid_search(pipeline, param_grid, train, train_labels, scoring):
+    grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring=scoring)
     grid.fit(train, train_labels)
     print("Grid search\nBest: %f using %s" % (grid.best_score_,
                                               grid.best_params_))
@@ -101,9 +100,9 @@ def __validate(pipeline, train, train_y, scoring):
     print(f'__validate took {seconds_to_hhmmss(timer.elapsed)}')
 
 
-def __pipeline(classifier, train, test, train_y, test_y, scoring,
-               param_grid=None, is_tuning=False):
-    print(f'#####  {classifier.__class__.__name__}  #####')
+def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
+    cls_name = classifier.__class__.__name__
+    print(f'#####  {cls_name}  #####')
     timer = Timer()
     timer.start()
     pipe = Pipeline([
@@ -117,18 +116,15 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
                     min_df=0.01,
                     sublinear_tf=True
                 ))
-                #('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
     ])
     # print(f'pipeline steps={repr(pipe.steps)}')
-    if is_tuning:
-        if param_grid is None:
-            param_grid = {}
-        param_grid['features__tfidf__vector__min_df'] = [1, 0.01, 0.05]
-        __grid_search(pipe, param_grid, train, train_y)
-    else:
+    if task == 'test':
+        __train(pipe, train, train_y)
+        __test(pipe, test, test_y)
+    elif task == 'train':
         __train(pipe, train, train_y)
         fs = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'].get_feature_names()
         print(f'fs len={len(fs)}')
@@ -136,36 +132,43 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring,
         coefs = pipe.named_steps['model'].coef_
         intercept = pipe.named_steps['model'].intercept_
         print(f'coefs shape={np.shape(coefs)}, intercept={intercept}')
+    elif task == 'tune':
+        param_grid = {
+            'features__tfidf__vector__min_df': [1, 0.01, 0.1, 0.5]
+        }
+        __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
+    elif task == 'validate':
         __validate(pipe, train, train_y, scoring)
-        # __test(pipe, test, test_y)
+    else:
+        raise ValueError(f'Invalid value: task={task}')
     timer.stop()
-    print(f'__pipeline took {seconds_to_hhmmss(timer.elapsed)}')
+    print(f'__pipeline: {cls_name},{task} took {seconds_to_hhmmss(timer.elapsed)}')
 
 
-def __multinomial_nb(train, test, train_labels, test_labels):
+def __multinomial_nb(train, test, train_labels, test_labels, task):
     __pipeline(MultinomialNB(), train, test, train_labels, test_labels, scoring='f1_macro',
-               is_tuning=__is_tuning)
+               task=task)
 
 
-def __linear_svc(train, test, train_labels, test_labels):
+def __linear_svc(train, test, train_labels, test_labels, task):
     __pipeline(LinearSVC(), train, test, train_labels, test_labels, scoring='f1_macro',
-               is_tuning=__is_tuning)
+               task=task)
 
 
-def __random_forest(train, test, train_labels, test_labels):
+def __random_forest(train, test, train_labels, test_labels, task):
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
-    ), train, test, train_labels, test_labels, scoring='f1_macro', is_tuning=__is_tuning)
+    ), train, test, train_labels, test_labels, scoring='f1_macro', task=task)
 
 
-def __gradient_boosting(train, test, train_labels, test_labels):
+def __gradient_boosting(train, test, train_labels, test_labels, task):
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
-    ), train, test, train_labels, test_labels, scoring='f1_macro', is_tuning=__is_tuning)
+    ), train, test, train_labels, test_labels, scoring='f1_macro', task=task)
 
 
-def __main():
+def __main(task):
     df = pd.read_csv(__in_file_path, sep=__in_file_separator)
     ys = df.loc[:, ['comment_count']]
     # Exclude the first 2 columns: row index, label
@@ -177,7 +180,7 @@ def __main():
     )
     __pipeline(Ridge(
         alpha=1.0
-    ), train, test, train_y, test_y, scoring='r2', is_tuning=__is_tuning)
+    ), train, test, train_y, test_y, scoring='r2', task=task)
 
 
 def __save_idf(tf_idf):
@@ -193,5 +196,5 @@ def __save_idf(tf_idf):
 if __name__ == '__main__':
     import sys
 
-    __is_tuning = sys.argv[1].lower() == 'true'
-    __main()
+    __task = sys.argv[1].lower()
+    __main(__task)
