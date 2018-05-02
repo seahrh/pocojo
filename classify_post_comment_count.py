@@ -16,7 +16,7 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import MaxAbsScaler
 
-from sklearnpd.sklearnpd import TextExtractor
+from sklearnpd.sklearnpd import TextExtractor, TransformPipeline
 from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
 
@@ -24,7 +24,7 @@ posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 __in_file_path = 'tmp/data.tsv'
 __in_file_separator = '\t'
-__features_file_path = 'tmp/features.txt'
+__idf_file_path = 'tmp/idf.txt'
 __is_tuning = False
 __random_state = 42
 __folds = 3
@@ -109,7 +109,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
     timer.start()
     pipe = Pipeline([
         ('features', FeatureUnion([
-            ('tfidf', Pipeline([
+            ('tfidf', TransformPipeline([
                 ('extract', TextExtractor(col='text')),
                 ('vector', TfidfVectorizer(
                     tokenizer=__tokenizer,
@@ -117,8 +117,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=__stopwords,
                     min_df=0.01,
                     sublinear_tf=True
-                )),
-                ('scale', MaxAbsScaler())
+                ))
+                # ('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
@@ -129,14 +129,17 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __test(pipe, test, test_y)
     elif task == 'train':
         __train(pipe, train, train_y)
-        vectorizer = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector']
-        tfidf_ws = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
-        print(f'tfidf_ws len={len(tfidf_ws)}')
-        with open(__features_file_path, 'wt') as out:
-            pprint(tfidf_ws, stream=out)
+        # vectorizer = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector']
+        features = pipe.named_steps['features'].get_feature_names()
+        print(f'features len={len(features)}')
         coefs = pipe.named_steps['model'].coef_
         intercept = pipe.named_steps['model'].intercept_
         print(f'coefs shape={np.shape(coefs)}, intercept={intercept}')
+        ranked_features = []
+        for i in coefs.argsort()[::-1]:
+            ranked_features.append((features[i], coefs[i]))
+        with open('tmp/coefs.txt', 'wt') as out:
+            pprint(ranked_features, stream=out)
     elif task == 'tune':
         param_grid = {
             'features__tfidf__vector__min_df': [1, 10, 100]
@@ -188,14 +191,11 @@ def __main(task):
     ), train, test, train_y, test_y, scoring='r2', task=task)
 
 
-def __save_idf(tf_idf):
-    terms = tf_idf.get_feature_names()
-    idf = tf_idf.idf_
-    term_to_idf = sorted(zip(terms, idf), key=itemgetter(1))
-    print(f'term_to_idf.len={repr(len(term_to_idf))}')
-    f = csv.writer(open("tmp/idf.csv", "wt"))
-    for term, idf in term_to_idf:
-        f.writerow([term, idf])
+def __save_idf(vectorizer):
+    tfidf_ws = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
+    print(f'tfidf_ws len={len(tfidf_ws)}')
+    with open(__idf_file_path, 'wt') as out:
+        pprint(tfidf_ws, stream=out)
 
 
 if __name__ == '__main__':

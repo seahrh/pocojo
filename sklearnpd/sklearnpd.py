@@ -1,5 +1,13 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
 import numpy as np
+
+
+class TransformPipeline(Pipeline):
+    def get_feature_names(self):
+        last = self.steps[-1]
+        print(f'last={repr(last)}')
+        return last[1].get_feature_names()
 
 
 class TextExtractor(BaseEstimator, TransformerMixin):
