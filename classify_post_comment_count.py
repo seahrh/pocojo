@@ -25,6 +25,7 @@ comments_glob_pattern = 'comments/*.json'
 __in_file_path = 'tmp/data.tsv'
 __in_file_separator = '\t'
 __idf_file_path = 'tmp/idf.txt'
+__coefs_file_path = 'tmp/coefs.txt'
 __is_tuning = False
 __random_state = 42
 __folds = 3
@@ -83,11 +84,16 @@ def __test(pipeline, test, test_y):
     print(f'Test result: r2={r2}, mae={mae}')
 
 
-def __train(pipeline, train, train_y):
+def __train(pipeline, train, train_y, step_features='features', step_model='model'):
     print('Training...')
     timer = Timer()
     timer.start()
     pipeline.fit(train, train_y)
+    features = pipeline.named_steps[step_features]
+    vectorizer = features.transformer_list[0][1].named_steps['vector']
+    __idf(vectorizer, __idf_file_path)
+    model = pipeline.named_steps[step_model]
+    __coefs(features, model, __coefs_file_path)
     timer.stop()
     print(f'__train took {seconds_to_hhmmss(timer.elapsed)}')
 
@@ -100,6 +106,18 @@ def __validate(pipeline, train, train_y, scoring):
     print(f'Validation result: {scoring}={np.median(scores)} (median)')
     timer.stop()
     print(f'__validate took {seconds_to_hhmmss(timer.elapsed)}')
+
+
+def __coefs(features, model, file_path):
+    feature_names = features.get_feature_names()
+    coefs = model.coef_[0]
+    intercept = model.intercept_
+    print(f'features len={len(feature_names)}\ncoefs len={len(coefs)}\nintercept={intercept}')
+    ranked_features = []
+    for i in coefs.argsort()[::-1]:
+        ranked_features.append((feature_names[i], coefs[i]))
+    with open(file_path, 'wt') as out:
+        pprint(ranked_features, stream=out)
 
 
 def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
@@ -129,17 +147,6 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __test(pipe, test, test_y)
     elif task == 'train':
         __train(pipe, train, train_y)
-        # vectorizer = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector']
-        features = pipe.named_steps['features'].get_feature_names()
-        print(f'features len={len(features)}')
-        coefs = pipe.named_steps['model'].coef_
-        intercept = pipe.named_steps['model'].intercept_
-        print(f'coefs shape={np.shape(coefs)}, intercept={intercept}')
-        ranked_features = []
-        for i in coefs.argsort()[::-1]:
-            ranked_features.append((features[i], coefs[i]))
-        with open('tmp/coefs.txt', 'wt') as out:
-            pprint(ranked_features, stream=out)
     elif task == 'tune':
         param_grid = {
             'features__tfidf__vector__min_df': [1, 10, 100]
@@ -191,11 +198,11 @@ def __main(task):
     ), train, test, train_y, test_y, scoring='r2', task=task)
 
 
-def __save_idf(vectorizer):
-    tfidf_ws = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
-    print(f'tfidf_ws len={len(tfidf_ws)}')
-    with open(__idf_file_path, 'wt') as out:
-        pprint(tfidf_ws, stream=out)
+def __idf(vectorizer, file_path):
+    idfs = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
+    print(f'idfs len={len(idfs)}')
+    with open(file_path, 'wt') as out:
+        pprint(idfs, stream=out)
 
 
 if __name__ == '__main__':
