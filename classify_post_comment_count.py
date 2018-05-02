@@ -1,6 +1,6 @@
 import csv
 from operator import itemgetter
-
+from pprint import pprint
 import nltk
 import numpy as np
 import pandas as pd
@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
+from sklearn.preprocessing import MaxAbsScaler
 
 from sklearnpd.sklearnpd import TextExtractor
 from stringx.stringx import strip_punctuation, is_number
@@ -23,6 +24,7 @@ posts_glob_pattern = 'posts_txt/*.txt'
 comments_glob_pattern = 'comments/*.json'
 __in_file_path = 'tmp/data.tsv'
 __in_file_separator = '\t'
+__features_file_path = 'tmp/features.txt'
 __is_tuning = False
 __random_state = 42
 __folds = 3
@@ -115,7 +117,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=__stopwords,
                     min_df=0.01,
                     sublinear_tf=True
-                ))
+                )),
+                ('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
@@ -126,15 +129,17 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __test(pipe, test, test_y)
     elif task == 'train':
         __train(pipe, train, train_y)
-        fs = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector'].get_feature_names()
-        print(f'fs len={len(fs)}')
-        # print(f'fs some={fs[::3]}')
+        vectorizer = pipe.named_steps['features'].transformer_list[0][1].named_steps['vector']
+        tfidf_ws = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
+        print(f'tfidf_ws len={len(tfidf_ws)}')
+        with open(__features_file_path, 'wt') as out:
+            pprint(tfidf_ws, stream=out)
         coefs = pipe.named_steps['model'].coef_
         intercept = pipe.named_steps['model'].intercept_
         print(f'coefs shape={np.shape(coefs)}, intercept={intercept}')
     elif task == 'tune':
         param_grid = {
-            'features__tfidf__vector__min_df': [1, 0.01, 0.1, 0.5]
+            'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
