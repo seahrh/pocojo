@@ -14,14 +14,14 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
-from sklearn.preprocessing import MaxAbsScaler
+from sklearn.preprocessing import MaxAbsScaler, StandardScaler
 
 from sklearnpd.sklearnpd import TextExtractor, TransformPipeline
 from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
 
-posts_glob_pattern = 'posts_txt/*.txt'
-comments_glob_pattern = 'comments/*.json'
+__posts_glob_pattern = 'posts_txt/*.txt'
+__comments_glob_pattern = 'comments/*.json'
 __in_file_path = 'tmp/data.tsv'
 __in_file_separator = '\t'
 __idf_file_path = 'tmp/idf.txt'
@@ -56,6 +56,7 @@ def __tokenizer(text):
 
 
 def __grid_search(pipeline, param_grid, train, train_labels, scoring):
+    print(f'param_grid={repr(param_grid)}\nTuning...')
     grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring=scoring)
     grid.fit(train, train_labels)
     print("Grid search\nBest: %f using %s" % (grid.best_score_,
@@ -135,8 +136,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=__stopwords,
                     min_df=0.01,
                     sublinear_tf=True
-                ))
-                # ('scale', MaxAbsScaler())
+                )),
+                ('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
@@ -149,7 +150,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            'features__tfidf__vector__min_df': [1, 10, 100]
+            'features__tfidf__scale': [None, MaxAbsScaler()]
+            #'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
