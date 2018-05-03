@@ -5,9 +5,13 @@ import numpy as np
 
 class TransformPipeline(Pipeline):
     def get_feature_names(self):
-        last = self.steps[-1]
-        # print(f'last={repr(last)}')
-        return last[1].get_feature_names()
+        for step in self.steps[::-1]:
+            t = step[1]
+            if hasattr(t, 'get_feature_names'):
+                # print(f'step={repr(step)}')
+                return t.get_feature_names()
+        raise ValueError(
+            'At least one transformer in the pipeline must implement `get_feature_names` method')
 
 
 class TextExtractor(BaseEstimator, TransformerMixin):
