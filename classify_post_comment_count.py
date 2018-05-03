@@ -8,7 +8,7 @@ from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, SGDRegressor
 from sklearn.metrics import f1_score, classification_report, r2_score, median_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.naive_bayes import MultinomialNB
@@ -111,9 +111,11 @@ def __validate(pipeline, train, train_y, scoring):
 
 def __coefs(features, model, file_path):
     feature_names = features.get_feature_names()
-    coefs = model.coef_[0]
+    coefs = np.ravel(model.coef_)
     intercept = model.intercept_
-    print(f'features len={len(feature_names)}\ncoefs len={len(coefs)}\nintercept={intercept}')
+    print(f'''features len={len(feature_names)}
+coefs len={len(coefs)}, saved {repr(file_path)}
+intercept={intercept}''')
     ranked_features = []
     for i in coefs.argsort()[::-1]:
         ranked_features.append((feature_names[i], coefs[i]))
@@ -151,7 +153,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
     elif task == 'tune':
         param_grid = {
             'features__tfidf__scale': [None, MaxAbsScaler()]
-            #'features__tfidf__vector__min_df': [1, 10, 100]
+            # 'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
@@ -185,7 +187,19 @@ def __gradient_boosting(train, test, train_labels, test_labels, task):
     ), train, test, train_labels, test_labels, scoring='f1_macro', task=task)
 
 
-def __main(task):
+def __ridge(train, test, train_y, test_y, task):
+    __pipeline(Ridge(
+        alpha=1.0
+    ), train, test, train_y, test_y, scoring='r2', task=task)
+
+
+def __sgd_regressor(train, test, train_y, test_y, task):
+    __pipeline(SGDRegressor(
+        random_state=__random_state
+    ), train, test, train_y, test_y, scoring='r2', task=task)
+
+
+def __main(model, task):
     df = pd.read_csv(__in_file_path, sep=__in_file_separator)
     ys = df.loc[:, ['comment_count']]
     # Exclude the first 2 columns: row index, label
@@ -195,14 +209,17 @@ def __main(task):
     train, test, train_y, test_y = train_test_split(
         xs, ys, test_size=0.1, random_state=__random_state
     )
-    __pipeline(Ridge(
-        alpha=1.0
-    ), train, test, train_y, test_y, scoring='r2', task=task)
+    if model == 'ridge':
+        __ridge(train, test, train_y, test_y, task)
+    elif model == 'sgd':
+        __sgd_regressor(train, test, train_y, test_y, task)
+    else:
+        raise ValueError(f'Invalid model={model}')
 
 
 def __idf(vectorizer, file_path):
     idfs = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
-    print(f'idfs len={len(idfs)}')
+    print(f'idfs len={len(idfs)}, saved {repr(file_path)}')
     with open(file_path, 'wt') as out:
         pprint(idfs, stream=out)
 
@@ -210,5 +227,6 @@ def __idf(vectorizer, file_path):
 if __name__ == '__main__':
     import sys
 
-    __task = sys.argv[1].lower()
-    __main(__task)
+    __model = sys.argv[1].lower()
+    __task = sys.argv[2].lower()
+    __main(__model, __task)
