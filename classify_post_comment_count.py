@@ -138,8 +138,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=__stopwords,
                     min_df=0.01,
                     sublinear_tf=True
-                )),
-                ('scale', MaxAbsScaler())
+                ))
             ]))
         ])),
         ('model', classifier)
@@ -152,8 +151,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            'features__tfidf__scale': [None, MaxAbsScaler()]
-            # 'features__tfidf__vector__min_df': [1, 10, 100]
+            # 'features__tfidf__scale': [None, MaxAbsScaler()]
+            'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
@@ -195,6 +194,7 @@ def __ridge(train, test, train_y, test_y, task):
 
 def __sgd_regressor(train, test, train_y, test_y, task):
     __pipeline(SGDRegressor(
+        max_iter=1000,
         random_state=__random_state
     ), train, test, train_y, test_y, scoring='r2', task=task)
 
