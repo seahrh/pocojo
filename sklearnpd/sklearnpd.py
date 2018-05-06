@@ -14,20 +14,21 @@ class TransformPipeline(Pipeline):
             'At least one transformer in the pipeline must implement `get_feature_names` method')
 
 
-class TextExtractor(BaseEstimator, TransformerMixin):
+class ColumnExtractor(BaseEstimator, TransformerMixin):
     """Adapted from code by @zacstewart
        https://github.com/zacstewart/kaggle_seeclickfix/blob/master/estimator.py
        Also see Zac Stewart's excellent blogpost on pipelines:
        http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
        """
 
-    def __init__(self, col):
+    def __init__(self, col, as_type):
         self.col = col
+        self.as_type = as_type
 
     def transform(self, df):
         # select the relevant column and return it as a numpy array
         # set the array type to be string
-        return np.asarray(df[self.col]).astype(str)
+        return np.asarray(df[self.col]).astype(self.as_type)
 
     def fit(self, *_):
         return self
