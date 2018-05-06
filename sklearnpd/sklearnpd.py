@@ -33,6 +33,9 @@ class ColumnExtractor(BaseEstimator, TransformerMixin):
     def fit(self, *_):
         return self
 
+    def get_feature_names(self):
+        return [self.col]
+
 
 class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
     """Adapted from code by @zacstewart

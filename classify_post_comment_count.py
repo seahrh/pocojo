@@ -1,6 +1,5 @@
-import csv
-from operator import itemgetter
 from pprint import pprint
+
 import nltk
 import numpy as np
 import pandas as pd
@@ -14,7 +13,6 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
-from sklearn.preprocessing import MaxAbsScaler, StandardScaler
 
 from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor
 from stringx.stringx import strip_punctuation, is_number
@@ -33,14 +31,6 @@ __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
 
 
-def num_words(s):
-    return len(s.split())
-
-
-def ave_word_length(s):
-    return np.mean([len(w) for w in s.split()])
-
-
 def __preprocessor(text):
     s = text.lower()
     s = s.replace('\r', ' ').replace('\n', ' ').strip()
@@ -56,7 +46,7 @@ def __tokenizer(text):
 
 
 def __grid_search(pipeline, param_grid, train, train_labels, scoring):
-    print(f'param_grid={repr(param_grid)}Tuning...')
+    print(f'param_grid={repr(param_grid)}\nTuning...')
     grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring=scoring)
     grid.fit(train, train_labels)
     print("Grid search\nBest: %f using %s" % (grid.best_score_,
@@ -140,7 +130,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     sublinear_tf=True
                 ))
             ])),
-            ('author', PrefixColumnExtractor(prefix='author_', as_type=int))
+            ('author', PrefixColumnExtractor(prefix='author_', as_type=int)),
+            ('token_count', ColumnExtractor(col='token_count', as_type=int))
         ])),
         ('model', classifier)
     ])
@@ -152,8 +143,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            'features__tfidf__scale': [None, MaxAbsScaler()]
-            # 'features__tfidf__vector__min_df': [1, 10, 100]
+            # 'features__tfidf__scale': [None, MaxAbsScaler()]
+            'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
