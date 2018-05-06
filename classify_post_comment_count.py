@@ -16,7 +16,7 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import MaxAbsScaler, StandardScaler
 
-from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline
+from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor
 from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
 
@@ -139,7 +139,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     min_df=10,
                     sublinear_tf=True
                 ))
-            ]))
+            ])),
+            ('author', PrefixColumnExtractor(prefix='author_', as_type=int))
         ])),
         ('model', classifier)
     ])

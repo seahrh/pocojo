@@ -41,16 +41,21 @@ class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
        http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
        """
 
-    def __init__(self, prefix):
+    def __init__(self, prefix, as_type):
         self.prefix = prefix
+        self.filter_col = None
+        self.as_type = as_type
 
     def transform(self, df):
         # select the relevant column and return it as a numpy array
-        filter_col = [col for col in df if col.startswith(self.prefix)]
-        return np.asarray(df[filter_col])
+        self.filter_col = [col for col in df if col.startswith(self.prefix)]
+        return np.asarray(df[self.filter_col]).astype(self.as_type)
 
     def fit(self, *_):
         return self
+
+    def get_feature_names(self):
+        return self.filter_col
 
 
 class Apply(BaseEstimator, TransformerMixin):
