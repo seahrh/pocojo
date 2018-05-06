@@ -21,14 +21,19 @@ class ColumnExtractor(BaseEstimator, TransformerMixin):
        http://zacstewart.com/2014/08/05/pipelines-of-featureunions-of-pipelines.html
        """
 
-    def __init__(self, col, as_type):
+    def __init__(self, col, as_type, as_matrix=False):
         self.col = col
         self.as_type = as_type
+        self.as_matrix = as_matrix
 
     def transform(self, df):
         # select the relevant column and return it as a numpy array
-        # set the array type to be string
-        return np.asarray(df[self.col]).astype(self.as_type)
+        # set the array type to be given type
+        res = np.asarray(df[self.col]).astype(self.as_type)
+        if self.as_matrix is True:
+            res = res.reshape(-1, 1)
+        print(f'ColumnExtractor shape={repr(np.shape(res))}')
+        return res
 
     def fit(self, *_):
         return self
@@ -52,7 +57,9 @@ class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
     def transform(self, df):
         # select the relevant column and return it as a numpy array
         self.filter_col = [col for col in df if col.startswith(self.prefix)]
-        return np.asarray(df[self.filter_col]).astype(self.as_type)
+        res = np.asarray(df[self.filter_col]).astype(self.as_type)
+        print(f'PrefixColumnExtractor shape={repr(np.shape(res))}')
+        return res
 
     def fit(self, *_):
         return self

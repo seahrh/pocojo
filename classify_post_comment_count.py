@@ -131,7 +131,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                 ))
             ])),
             ('author', PrefixColumnExtractor(prefix='author_', as_type=int)),
-            ('token_count', ColumnExtractor(col='token_count', as_type=int))
+            ('token_count', ColumnExtractor(col='token_count', as_type=int, as_matrix=True))
         ])),
         ('model', classifier)
     ])
