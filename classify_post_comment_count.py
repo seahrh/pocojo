@@ -56,7 +56,7 @@ def __tokenizer(text):
 
 
 def __grid_search(pipeline, param_grid, train, train_labels, scoring):
-    print(f'param_grid={repr(param_grid)}\nTuning...')
+    print(f'param_grid={repr(param_grid)}Tuning...')
     grid = GridSearchCV(pipeline, cv=__folds, param_grid=param_grid, scoring=scoring)
     grid.fit(train, train_labels)
     print("Grid search\nBest: %f using %s" % (grid.best_score_,
@@ -136,7 +136,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     tokenizer=__tokenizer,
                     preprocessor=__preprocessor,
                     stop_words=__stopwords,
-                    min_df=0.01,
+                    min_df=10,
                     sublinear_tf=True
                 ))
             ]))
@@ -151,8 +151,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            # 'features__tfidf__scale': [None, MaxAbsScaler()]
-            'features__tfidf__vector__min_df': [1, 10, 100]
+            'features__tfidf__scale': [None, MaxAbsScaler()]
+            # 'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
