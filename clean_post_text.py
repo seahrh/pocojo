@@ -1,6 +1,7 @@
 import glob
 import json
 from os import path
+from pprint import pprint
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,8 @@ __posts_glob_pattern = 'posts/*.json'
 __file_path_template = 'posts_txt/p{}.txt'
 __comment_path_template = 'comments/c{}.json'
 __out_file_path = 'tmp/data.tsv'
+__comment_count_file_path = 'tmp/comment_count.txt'
+__pid_len_max = 6
 
 
 def __title(jo):
@@ -52,11 +55,7 @@ def __save_text_file(file_path, text):
 
 
 def __pids(paths):
-    res = []
-    for p in paths:
-        pid = path.basename(p)[1:-5]
-        res.append(pid)
-    return res
+    return [__pid(p) for p in paths]
 
 
 def __comment_count(file_path):
@@ -64,6 +63,11 @@ def __comment_count(file_path):
         jo = json.load(f)
         res = jo['total']
         return int(res)
+
+
+def __save_dict(d, file_path):
+    with open(file_path, 'wt') as out:
+        pprint(d, stream=out)
 
 
 def __token_count(s):
@@ -74,20 +78,30 @@ def __token_length_mean(s):
     return np.mean([len(w) for w in s.split()])
 
 
+def __pid(file_path):
+    return path.basename(file_path)[1:-5]
+
+
+def __pid_padded(pid):
+    return str(pid).zfill(__pid_len_max)
+
+
 def __main():
-    paths = sorted(glob.glob(__posts_glob_pattern))
+    paths = glob.glob(__posts_glob_pattern)
     pids = __pids(paths)
     df = pd.DataFrame(
         columns=['comment_count', 'token_count', 'token_length_mean', 'author', 'text'],
         index=pids
     )
     n = 0
+    pid_to_comment_count = dict()
     for p in paths:
         with open(p, 'rt') as f:
-            pid = path.basename(p)[1:-5]
+            pid = __pid(p)
             n += 1
             comment_path = __comment_path_template.format(pid)
             comment_count = __comment_count(comment_path)
+            pid_to_comment_count[__pid_padded(pid)] = comment_count
             print(f'n={n}, pid={repr(pid)}, comment_count={repr(comment_count)}')
             jo = json.load(f)
             title = __title(jo)
@@ -106,7 +120,11 @@ def __main():
             # file_path = file_path_template.format(pid)
             # __save_text_file(file_path, text)
     df = pd.get_dummies(df, columns=['author'], prefix=['author'])
+    print('Saving dataframe...')
     df.to_csv(__out_file_path, sep='\t')
+    print(f'Saved {__out_file_path}\nSaving pid_to_comment_count...')
+    __save_dict(pid_to_comment_count, __comment_count_file_path)
+    print(f'Saved {__comment_count_file_path}')
 
 
 if __name__ == '__main__':
