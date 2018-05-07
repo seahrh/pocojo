@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, GridSearc
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
+from sklearn.preprocessing import MaxAbsScaler
 
 from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor
 from stringx.stringx import strip_punctuation, is_number
@@ -115,7 +116,7 @@ intercept={intercept}''')
 
 def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
     cls_name = classifier.__class__.__name__
-    print(f'#####  {cls_name}  #####')
+    print(f'#####  {cls_name}:{task}  #####')
     timer = Timer()
     timer.start()
     pipe = Pipeline([
@@ -131,7 +132,14 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                 ))
             ])),
             ('author', PrefixColumnExtractor(prefix='author_', as_type=int)),
-            ('token_count', ColumnExtractor(col='token_count', as_type=int, as_matrix=True))
+            ('token_count', TransformPipeline([
+                ('extract', ColumnExtractor(col='token_count', as_type=int, as_matrix=True)),
+                ('scale', MaxAbsScaler())
+            ])),
+            ('token_length_mean', TransformPipeline([
+                ('extract', ColumnExtractor(col='token_length_mean', as_type=float, as_matrix=True)),
+                ('scale', MaxAbsScaler())
+            ]))
         ])),
         ('model', classifier)
     ])
@@ -143,8 +151,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            # 'features__tfidf__scale': [None, MaxAbsScaler()]
-            'features__tfidf__vector__min_df': [1, 10, 100]
+            'features__token_length_mean__scale': [None, MaxAbsScaler()]
+            # 'features__tfidf__vector__min_df': [1, 10, 100]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
@@ -152,7 +160,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
     else:
         raise ValueError(f'Invalid value: task={task}')
     timer.stop()
-    print(f'__pipeline: {cls_name},{task} took {seconds_to_hhmmss(timer.elapsed)}')
+    print(f'__pipeline {cls_name}:{task} took {seconds_to_hhmmss(timer.elapsed)}')
 
 
 def __multinomial_nb(train, test, train_labels, test_labels, task):

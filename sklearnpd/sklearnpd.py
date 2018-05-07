@@ -32,7 +32,7 @@ class ColumnExtractor(BaseEstimator, TransformerMixin):
         res = np.asarray(df[self.col]).astype(self.as_type)
         if self.as_matrix is True:
             res = res.reshape(-1, 1)
-        print(f'ColumnExtractor shape={repr(np.shape(res))}')
+        print(f'{repr(self.col)} ColumnExtractor shape={repr(np.shape(res))}')
         return res
 
     def fit(self, *_):
@@ -58,7 +58,7 @@ class PrefixColumnExtractor(BaseEstimator, TransformerMixin):
         # select the relevant column and return it as a numpy array
         self.filter_col = [col for col in df if col.startswith(self.prefix)]
         res = np.asarray(df[self.filter_col]).astype(self.as_type)
-        print(f'PrefixColumnExtractor shape={repr(np.shape(res))}')
+        print(f'{repr(self.prefix)} PrefixColumnExtractor shape={repr(np.shape(res))}')
         return res
 
     def fit(self, *_):
