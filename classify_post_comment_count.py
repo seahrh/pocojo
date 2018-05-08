@@ -30,6 +30,7 @@ __random_state = 42
 __folds = 3
 __stemmer = PorterStemmer()
 __stopwords = set(stopwords.words('english'))
+__metric_median_absolute_error = 'neg_median_absolute_error'
 
 
 def __preprocessor(text):
@@ -163,40 +164,40 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
     print(f'__pipeline {cls_name}:{task} took {seconds_to_hhmmss(timer.elapsed)}')
 
 
-def __multinomial_nb(train, test, train_labels, test_labels, task):
-    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, scoring='f1_macro',
+def __multinomial_nb(train, test, train_labels, test_labels, task, scoring='f1_macro'):
+    __pipeline(MultinomialNB(), train, test, train_labels, test_labels, scoring=scoring,
                task=task)
 
 
-def __linear_svc(train, test, train_labels, test_labels, task):
-    __pipeline(LinearSVC(), train, test, train_labels, test_labels, scoring='f1_macro',
+def __linear_svc(train, test, train_labels, test_labels, task, scoring='f1_macro'):
+    __pipeline(LinearSVC(), train, test, train_labels, test_labels, scoring=scoring,
                task=task)
 
 
-def __random_forest(train, test, train_labels, test_labels, task):
+def __random_forest(train, test, train_labels, test_labels, task, scoring='f1_macro'):
     __pipeline(RandomForestClassifier(
         n_jobs=-1,
         random_state=__random_state
-    ), train, test, train_labels, test_labels, scoring='f1_macro', task=task)
+    ), train, test, train_labels, test_labels, scoring=scoring, task=task)
 
 
-def __gradient_boosting(train, test, train_labels, test_labels, task):
+def __gradient_boosting(train, test, train_labels, test_labels, task, scoring='f1_macro'):
     __pipeline(GradientBoostingClassifier(
         random_state=__random_state
-    ), train, test, train_labels, test_labels, scoring='f1_macro', task=task)
+    ), train, test, train_labels, test_labels, scoring=scoring, task=task)
 
 
-def __ridge(train, test, train_y, test_y, task):
+def __ridge(train, test, train_y, test_y, task, scoring='r2'):
     __pipeline(Ridge(
         alpha=1.0
-    ), train, test, train_y, test_y, scoring='r2', task=task)
+    ), train, test, train_y, test_y, scoring=scoring, task=task)
 
 
-def __sgd_regressor(train, test, train_y, test_y, task):
+def __sgd_regressor(train, test, train_y, test_y, task, scoring='r2'):
     __pipeline(SGDRegressor(
         max_iter=1000,
         random_state=__random_state
-    ), train, test, train_y, test_y, scoring='r2', task=task)
+    ), train, test, train_y, test_y, scoring=scoring, task=task)
 
 
 def __main(model, task):
