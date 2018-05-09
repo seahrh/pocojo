@@ -4,8 +4,10 @@ import nltk
 import numpy as np
 import pandas as pd
 from nltk.stem.porter import PorterStemmer
+
+from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.linear_model import Ridge, SGDRegressor
 from sklearn.metrics import f1_score, classification_report, r2_score, median_absolute_error
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
@@ -135,6 +137,23 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=stopwords(),
                     min_df=10,
                     sublinear_tf=True
+                ))
+            ])),
+            ('topic', TransformPipeline([
+                ('extract', ColumnExtractor(col='text', as_type=str)),
+                ('vector', CountVectorizer(
+                    analyzer='word',
+                    tokenizer=__tokenizer,
+                    preprocessor=__preprocessor,
+                    stop_words=stopwords(),
+                    min_df=10
+                )),
+                ('lda', LatentDirichletAllocation(
+                    n_components=10,
+                    max_iter=10,
+                    learning_method='online',
+                    learning_offset=10.,
+                    random_state=__random_state
                 ))
             ])),
             ('author', PrefixColumnExtractor(prefix='author_', as_type=int)),
