@@ -3,7 +3,6 @@ from pprint import pprint
 import nltk
 import numpy as np
 import pandas as pd
-from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -16,6 +15,7 @@ from sklearn.svm import LinearSVC
 from sklearn.preprocessing import MaxAbsScaler
 
 from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor
+from stopwords import stopwords
 from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
 
@@ -29,7 +29,6 @@ __is_tuning = False
 __random_state = 42
 __folds = 3
 __stemmer = PorterStemmer()
-__stopwords = set(stopwords.words('english'))
 __metric_median_absolute_error = 'neg_median_absolute_error'
 
 
@@ -133,7 +132,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     analyzer='word',
                     tokenizer=__tokenizer,
                     preprocessor=__preprocessor,
-                    stop_words=__stopwords,
+                    stop_words=stopwords(),
                     min_df=10,
                     sublinear_tf=True
                 ))
