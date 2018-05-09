@@ -149,7 +149,12 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
             ('char_count', TransformPipeline([
                 ('extract', ColumnExtractor(col='char_count', as_type=int, as_matrix=True)),
                 ('scale', MaxAbsScaler())
-            ]))
+            ])),
+            ('digit_char_ratio', ColumnExtractor(col='digit_char_ratio', as_type=float, as_matrix=True)),
+            ('alpha_char_ratio', ColumnExtractor(col='alpha_char_ratio', as_type=float, as_matrix=True)),
+            ('upper_char_ratio', ColumnExtractor(col='upper_char_ratio', as_type=float, as_matrix=True)),
+            ('space_char_ratio', ColumnExtractor(col='space_char_ratio', as_type=float, as_matrix=True)),
+            ('punctuation_char_ratio', ColumnExtractor(col='punctuation_char_ratio', as_type=float, as_matrix=True))
         ])),
         ('model', classifier)
     ])

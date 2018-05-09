@@ -6,7 +6,7 @@ from pprint import pprint
 import numpy as np
 import pandas as pd
 from etl.markup_remover import strip_html
-from stringx.stringx import to_ascii_str, count_digit, count_alpha, count_space, count_upper
+from stringx.stringx import to_ascii_str, count_digit, count_alpha, count_space, count_upper, count_punctuation
 
 __posts_glob_pattern = 'posts/*.json'
 __file_path_template = 'posts_txt/p{}.txt'
@@ -92,6 +92,10 @@ def __main():
     df = pd.DataFrame(
         columns=['comment_count',
                  'digit_char_ratio',
+                 'alpha_char_ratio',
+                 'upper_char_ratio',
+                 'space_char_ratio',
+                 'punctuation_char_ratio',
                  'char_count',
                  'token_count',
                  'token_length_mean',
@@ -117,11 +121,19 @@ def __main():
             text = '{} {}'.format(title, content)
             char_count = len(text)
             digit_char_ratio = count_digit(text) / char_count
+            alpha_char_ratio = count_alpha(text) / char_count
+            upper_char_ratio = count_upper(text) / char_count
+            space_char_ratio = count_space(text) / char_count
+            punctuation_char_ratio = count_punctuation(text) / char_count
             token_count = __token_count(text)
             token_length_mean = __token_length_mean(text)
             df.loc[pid] = pd.Series({
                 'comment_count': comment_count,
                 'digit_char_ratio': digit_char_ratio,
+                'alpha_char_ratio': alpha_char_ratio,
+                'upper_char_ratio': upper_char_ratio,
+                'space_char_ratio': space_char_ratio,
+                'punctuation_char_ratio': punctuation_char_ratio,
                 'char_count': char_count,
                 'token_count': token_count,
                 'token_length_mean': token_length_mean,
