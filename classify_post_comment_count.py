@@ -34,6 +34,11 @@ __metric_median_absolute_error = 'neg_median_absolute_error'
 
 
 def __preprocessor(text):
+    """
+    Happens before tokenizer.
+    :param text: text
+    :return: text
+    """
     s = text.lower()
     s = s.replace('\r', ' ').replace('\n', ' ').strip()
     s = strip_punctuation(s)
@@ -42,9 +47,9 @@ def __preprocessor(text):
 
 def __tokenizer(text):
     tokens = nltk.word_tokenize(text)
-    tokens = [t for t in tokens if not is_number(t)]
     stems = [__stemmer.stem(t) for t in tokens]
-    return stems
+    tokens = [t for t in stems if not is_number(t)]
+    return tokens
 
 
 def __grid_search(pipeline, param_grid, train, train_labels, scoring):
@@ -125,6 +130,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
             ('tfidf', TransformPipeline([
                 ('extract', ColumnExtractor(col='text', as_type=str)),
                 ('vector', TfidfVectorizer(
+                    analyzer='word',
                     tokenizer=__tokenizer,
                     preprocessor=__preprocessor,
                     stop_words=__stopwords,
