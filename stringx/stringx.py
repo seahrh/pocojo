@@ -51,3 +51,43 @@ def is_number(s):
     except ValueError:
         res = False
     return res
+
+
+def count_digit(s):
+    n = 0
+    for c in s:
+        if c.isdigit():
+            n += 1
+    return n
+
+
+def count_alpha(s):
+    n = 0
+    for c in s:
+        if c.isalpha():
+            n += 1
+    return n
+
+
+def count_upper(s):
+    n = 0
+    for c in s:
+        if c.isupper():
+            n += 1
+    return n
+
+
+def count_space(s):
+    n = 0
+    for c in s:
+        if c.isspace():
+            n += 1
+    return n
+
+
+def count_punctuation(s):
+    n = 0
+    for c in s:
+        if c in string.punctuation:
+            n += 1
+    return n

@@ -145,6 +145,10 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
             ('token_length_mean', TransformPipeline([
                 ('extract', ColumnExtractor(col='token_length_mean', as_type=float, as_matrix=True)),
                 ('scale', MaxAbsScaler())
+            ])),
+            ('char_count', TransformPipeline([
+                ('extract', ColumnExtractor(col='char_count', as_type=int, as_matrix=True)),
+                ('scale', MaxAbsScaler())
             ]))
         ])),
         ('model', classifier)
