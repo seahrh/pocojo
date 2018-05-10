@@ -112,7 +112,7 @@ def __validate(pipeline, train, train_y, scoring):
 
 def __topic_term(transformer, file_path):
     tt = transformer.components_
-    print(f'topic_to_term shape={np.shape(tt)}')
+    print(f'topic_to_term shape={np.shape(tt)}, saved {repr(file_path)}')
     with open(file_path, 'wt') as out:
         pprint(np.transpose(tt), stream=out)
 

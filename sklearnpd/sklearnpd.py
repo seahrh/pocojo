@@ -17,7 +17,7 @@ class TransformPipeline(Pipeline):
 
 class TransformLatentDirichletAllocation(LatentDirichletAllocation):
     def get_feature_names(self):
-        return list(range(1, self.n_components + 1))
+        return [str(i) for i in range(1, self.n_components + 1)]
 
 
 class ColumnExtractor(BaseEstimator, TransformerMixin):
