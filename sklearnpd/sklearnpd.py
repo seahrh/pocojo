@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.pipeline import Pipeline
 import numpy as np
 
@@ -12,6 +13,11 @@ class TransformPipeline(Pipeline):
                 return t.get_feature_names()
         raise ValueError(
             'At least one transformer in the pipeline must implement `get_feature_names` method')
+
+
+class TransformLatentDirichletAllocation(LatentDirichletAllocation):
+    def get_feature_names(self):
+        return list(range(1, self.n_components + 1))
 
 
 class ColumnExtractor(BaseEstimator, TransformerMixin):

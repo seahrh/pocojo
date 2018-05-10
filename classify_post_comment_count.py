@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 from nltk.stem.porter import PorterStemmer
 
-from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.linear_model import Ridge, SGDRegressor
@@ -16,7 +15,8 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import MaxAbsScaler
 
-from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor
+from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor,\
+    TransformLatentDirichletAllocation
 from stopwords import stopwords
 from stringx.stringx import strip_punctuation, is_number
 from timex.timex import Timer, seconds_to_hhmmss
@@ -27,6 +27,7 @@ __in_file_path = 'tmp/data.tsv'
 __in_file_separator = '\t'
 __idf_file_path = 'tmp/idf.txt'
 __coefs_file_path = 'tmp/coefs.txt'
+__topic_term_file_path = 'tmp/topic_term.txt'
 __is_tuning = False
 __random_state = 42
 __folds = 3
@@ -91,6 +92,8 @@ def __train(pipeline, train, train_y, step_features='features', step_model='mode
     features = pipeline.named_steps[step_features]
     vectorizer = features.transformer_list[0][1].named_steps['vector']
     __idf(vectorizer, __idf_file_path)
+    lda = features.transformer_list[1][1].named_steps['lda']
+    __topic_term(lda, __topic_term_file_path)
     model = pipeline.named_steps[step_model]
     __coefs(features, model, __coefs_file_path)
     timer.stop()
@@ -105,6 +108,13 @@ def __validate(pipeline, train, train_y, scoring):
     print(f'Validation result: {scoring}={np.median(scores)} (median)')
     timer.stop()
     print(f'__validate took {seconds_to_hhmmss(timer.elapsed)}')
+
+
+def __topic_term(transformer, file_path):
+    tt = transformer.components_
+    print(f'topic_to_term shape={np.shape(tt)}')
+    with open(file_path, 'wt') as out:
+        pprint(np.transpose(tt), stream=out)
 
 
 def __coefs(features, model, file_path):
@@ -148,7 +158,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     stop_words=stopwords(),
                     min_df=10
                 )),
-                ('lda', LatentDirichletAllocation(
+                ('lda', TransformLatentDirichletAllocation(
                     n_components=10,
                     max_iter=10,
                     learning_method='online',
@@ -185,8 +195,9 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         __train(pipe, train, train_y)
     elif task == 'tune':
         param_grid = {
-            'features__token_length_mean__scale': [None, MaxAbsScaler()]
+            # 'features__token_length_mean__scale': [None, MaxAbsScaler()]
             # 'features__tfidf__vector__min_df': [1, 10, 100]
+            'features__topic__lda__n_components': [8, 16, 32]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
