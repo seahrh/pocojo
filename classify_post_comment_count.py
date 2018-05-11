@@ -114,7 +114,7 @@ def __topic_term(transformer, file_path):
     tt = transformer.components_
     print(f'topic_to_term shape={np.shape(tt)}, saved {repr(file_path)}')
     with open(file_path, 'wt') as out:
-        pprint(np.transpose(tt), stream=out)
+        pprint(tt, stream=out)
 
 
 def __coefs(features, model, file_path):
@@ -159,7 +159,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     min_df=10
                 )),
                 ('lda', TransformLatentDirichletAllocation(
-                    n_components=10,
+                    n_components=8,
                     max_iter=10,
                     learning_method='online',
                     learning_offset=10.,
@@ -197,7 +197,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
         param_grid = {
             # 'features__token_length_mean__scale': [None, MaxAbsScaler()]
             # 'features__tfidf__vector__min_df': [1, 10, 100]
-            'features__topic__lda__n_components': [8, 16, 32]
+            # 'features__topic__lda__n_components': [8, 16, 32]
+            'features__topic__lda__max_iter': [3, 6, 10]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
