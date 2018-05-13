@@ -160,7 +160,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                 )),
                 ('lda', TransformLatentDirichletAllocation(
                     n_components=8,
-                    max_iter=10,
+                    max_iter=3,
                     learning_method='online',
                     learning_offset=10.,
                     random_state=__random_state
