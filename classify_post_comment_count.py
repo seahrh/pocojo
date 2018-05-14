@@ -198,7 +198,9 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
             # 'features__token_length_mean__scale': [None, MaxAbsScaler()]
             # 'features__tfidf__vector__min_df': [1, 10, 100]
             # 'features__topic__lda__n_components': [8, 16, 32]
-            'features__topic__lda__max_iter': [3, 6, 10]
+            # 'features__topic__lda__max_iter': [3, 6, 10]
+            # 'model__penalty': ['l2', 'l1', 'elasticnet']
+            'model__alpha': [0.0001, 0.001, 0.01]
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
@@ -240,6 +242,7 @@ def __ridge(train, test, train_y, test_y, task, scoring='r2'):
 
 def __sgd_regressor(train, test, train_y, test_y, task, scoring='r2'):
     __pipeline(SGDRegressor(
+        penalty='elasticnet',
         max_iter=1000,
         random_state=__random_state
     ), train, test, train_y, test_y, scoring=scoring, task=task)
