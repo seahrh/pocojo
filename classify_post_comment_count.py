@@ -163,6 +163,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     max_iter=3,
                     learning_method='online',
                     learning_offset=10.,
+                    n_jobs=2,
                     random_state=__random_state
                 ))
             ])),
