@@ -163,7 +163,7 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
                     max_iter=3,
                     learning_method='online',
                     learning_offset=10.,
-                    n_jobs=2,
+                    n_jobs=4,
                     random_state=__random_state
                 ))
             ])),
@@ -243,7 +243,7 @@ def __ridge(train, test, train_y, test_y, task, scoring='r2'):
 
 def __sgd_regressor(train, test, train_y, test_y, task, scoring='r2'):
     __pipeline(SGDRegressor(
-        penalty='elasticnet',
+        penalty='l2',
         max_iter=1000,
         random_state=__random_state
     ), train, test, train_y, test_y, scoring=scoring, task=task)
