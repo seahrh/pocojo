@@ -28,7 +28,7 @@ Changed from classification task to regression, where the target variable is the
 
 ### Splitting
 
-* Test set holdout at 10% of posts (~700)
+* Test set holdout at 10% of posts
 * Reproducible random split, because random seed is fixed
 
 ### Preprocessing
@@ -43,12 +43,17 @@ Changed from classification task to regression, where the target variable is the
 
 ### Feature Engineering
 
+In all, more than 20K features were created.
 * tf-idf weights
     * Lowercase
     * Remove stopwords
     * Remove punctuation
     * Stemming (Porter)
     * Filtering: document frequency thresholding
+* Topic weights
+    * How each post is contributing to a range of unlabelled topics - a post has a score for a given topic, this is known as the topic weight
+    * Number of topics set as 8 (after parameter tuning) 
+    * Model: [Latent Dirichlet Allocation (LDA)](http://scikit-learn.org/stable/modules/generated/sklearn.decomposition.LatentDirichletAllocation.html)
 * Token count
 * Average token length
 * Author name (one-hot encoded)
@@ -60,7 +65,7 @@ Changed from classification task to regression, where the target variable is the
     * Whitespace character count
     * Punctuation character count
     
-Coefficients are listed in [coefs.txt](coefs.txt).     
+Coefficients are listed in [coefs.txt](result/coefs.txt).     
 
 ### Models
 
@@ -166,7 +171,7 @@ f1_macro=0.4257275226348023 (median)
 
 ### Test
 
-* Evaluation uses R2 (same as validation)
+* Evaluation uses R2 (same as validation), and median absolute error
 * Validation result is close to test result but performance is poor. This suggests underfitting
 * Class imbalance: the largest class `lo` is best performing
 * Worst model is linear SVM. This suggests decision boundaries are non-linear
