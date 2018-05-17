@@ -107,7 +107,7 @@ __pipeline: SGDRegressor,tune took 01:53:11
 
 ### Validation
 
-* SGD is the best performer
+* SGD is the best performer, with R2 score of 0.37
 * Evaluation uses R2 (scores below)
 * 3-fold validation (save time and train on two-third majority)
 
@@ -118,7 +118,9 @@ __validate took 00:42:44
 __pipeline SGDRegressor:validate took 00:42:44
 
 Ridge
-
+Validation result: r2=0.2952067694919748 (median)
+__validate took 00:42:50
+__pipeline Ridge:validate took 00:42:50
 ```
 
 ### Test
@@ -160,6 +162,40 @@ Testing...
 'punctuation_char_ratio' ColumnExtractor shape=(3219, 1)
 Test result: r2=0.34676911251904907, mae=2.216866481477075
 __pipeline SGDRegressor:test took 00:16:50
+
+#####  Ridge:test  #####
+Training...
+'text' ColumnExtractor shape=(28969,)
+'text' ColumnExtractor shape=(28969,)
+'author_' PrefixColumnExtractor shape=(28969, 1678)
+'token_count' ColumnExtractor shape=(28969, 1)
+'token_length_mean' ColumnExtractor shape=(28969, 1)
+'char_count' ColumnExtractor shape=(28969, 1)
+'digit_char_ratio' ColumnExtractor shape=(28969, 1)
+'alpha_char_ratio' ColumnExtractor shape=(28969, 1)
+'upper_char_ratio' ColumnExtractor shape=(28969, 1)
+'space_char_ratio' ColumnExtractor shape=(28969, 1)
+'punctuation_char_ratio' ColumnExtractor shape=(28969, 1)
+idfs len=18455, saved 'tmp/idf.txt'
+topic_to_term shape=(8, 18455), saved 'tmp/topic_term.txt'
+features len=20149
+coefs len=20149, saved 'tmp/coefs.txt'
+intercept=[2.9110611]
+__train took 00:16:25
+Testing...
+'text' ColumnExtractor shape=(3219,)
+'text' ColumnExtractor shape=(3219,)
+'author_' PrefixColumnExtractor shape=(3219, 1678)
+'token_count' ColumnExtractor shape=(3219, 1)
+'token_length_mean' ColumnExtractor shape=(3219, 1)
+'char_count' ColumnExtractor shape=(3219, 1)
+'digit_char_ratio' ColumnExtractor shape=(3219, 1)
+'alpha_char_ratio' ColumnExtractor shape=(3219, 1)
+'upper_char_ratio' ColumnExtractor shape=(3219, 1)
+'space_char_ratio' ColumnExtractor shape=(3219, 1)
+'punctuation_char_ratio' ColumnExtractor shape=(3219, 1)
+Test result: r2=0.2665669801449393, mae=2.8413241055893064
+__pipeline Ridge:test took 00:17:59
 ```
 
 ### Implementation
