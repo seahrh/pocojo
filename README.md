@@ -4,27 +4,19 @@ POsts-COmments-JObs dataset
 
 This document describes ongoing work. See [v1.0.md](v1.0.md) for the initial write-up at submission time.
 
-## Deploy as virtual environment
-
-Install dependencies
-
-`(venv) $ pip install -r /path/to/requirements.txt`
-
-Run unit tests
-
-`(venv) $ python -m unittest`
-
-See test cases for [`etl`](etl/tests/) and [`stringx`](stringx/tests/) packages.
-
 ## Data
 
 Size
 * 32,188 posts (worked around the page limit in the posts api)
 * Downloaded comments for each post
 
-## Task
+## Predict comment-count
 
 Changed from classification task to regression, where the target variable is the comment count of the post.
+
+### Results
+
+Best result: Stochastic gradient descent (SGD) regression, with R2 score of 0.34 and median absolute error of 2.2.
 
 ### Splitting
 
@@ -50,6 +42,7 @@ In all, more than 20K features were created.
     * Remove punctuation
     * Stemming (Porter)
     * Filtering: document frequency thresholding
+    * All terms and their [IDF scores](result/idf.txt)
 * Topic weights
     * How each post is contributing to a range of unlabelled topics - a post has a score for a given topic, this is known as the topic weight
     * Number of topics set as 8 (after parameter tuning) 
@@ -65,7 +58,7 @@ In all, more than 20K features were created.
     * Whitespace character count
     * Punctuation character count
     
-Coefficients are listed in [coefs.txt](result/coefs.txt). Highlights:
+All features are listed in [coefs.txt](result/coefs.txt), in descending order of the coefficient value. Highlights:
 * tf-idf weights alone account for a R2 score of 0.24
 * Expectedly, some author features have high coefficients
 * Topic features do not have as large coefficients as hoped, need for more tuning
@@ -114,128 +107,59 @@ __pipeline: SGDRegressor,tune took 01:53:11
 
 ### Validation
 
-* Evaluation uses R2
+* SGD is the best performer
+* Evaluation uses R2 (scores below)
 * 3-fold validation (save time and train on two-third majority)
 
 ```
+SGD
+Validation result: r2=0.3732233278447895 (median)
+__validate took 00:42:44
+__pipeline SGDRegressor:validate took 00:42:44
 
-#####  MultinomialNB  #####
-
-Validation result
-
-f1_macro=0.4084200536715857 (median)
-
-#####  LinearSVC  #####
-
-Validation result
-
-f1_macro=0.23223945151462536 (median)
-
-#####  RandomForestClassifier  #####
-
-Validation result
-
-f1_macro=0.39869317447985214 (median)
-
-#####  GradientBoostingClassifier  #####
-
-Validation result
-
-f1_macro=0.4257275226348023 (median)
+Ridge
 
 ```
 
 ### Test
 
-* Evaluation uses R2 (same as validation), and median absolute error
+* Evaluation uses R2 (same as validation), and median absolute error (MAE)
 * Validation result is close to test result but performance is poor. This suggests underfitting
-* Class imbalance: the largest class `lo` is best performing
-* Worst model is linear SVM. This suggests decision boundaries are non-linear
-* Best model is GBM, but its pipeline also takes the longest time
-* Performance of NB is close to GBM, but almost twice as fast
-
+* SGD is the best performer, with R2 score of 0.34 and MAE of 2.2
 ```
-
-#####  MultinomialNB  #####
-
-Test result
-
-**f1_macro=0.4059017962638907**
-
-f1_micro=0.5466101694915254
-
-             precision    recall  f1-score   support
-
-         hi       0.41      0.42      0.42       169
-
-         lo       0.61      0.84      0.71       363
-
-         mi       0.32      0.06      0.10       176
-
-avg / total       0.49      0.55      0.49       708
-
-Time taken 00:07:31
-
-#####  LinearSVC  #####
-
-Test result
-
-**f1_macro=0.264795693706809**
-
-f1_micro=0.3531073446327684
-
-             precision    recall  f1-score   support
-
-         hi       0.00      0.00      0.00       169
-
-         lo       0.73      0.26      0.38       363
-
-         mi       0.27      0.89      0.41       176
-
-avg / total       0.44      0.35      0.30       708
-
-Time taken 00:08:09
-
-#####  RandomForestClassifier  #####
-
-Test result
-
-**f1_macro=0.377749821261618**
-
-f1_micro=0.5098870056497176
-
-             precision    recall  f1-score   support
-
-         hi       0.39      0.31      0.34       169
-
-         lo       0.57      0.81      0.67       363
-
-         mi       0.25      0.08      0.12       176
-
-avg / total       0.45      0.51      0.46       708
-
-Time taken 00:07:32
-
-#####  GradientBoostingClassifier  #####
-
-Test result
-
-**f1_macro=0.4324739554379346**
-
-f1_micro=0.5720338983050848
-
-             precision    recall  f1-score   support
-
-         hi       0.50      0.39      0.44       169
-
-         lo       0.60      0.89      0.72       363
-
-         mi       0.38      0.09      0.14       176
-
-avg / total       0.52      0.57      0.51       708
-
-Time taken 00:12:33
-
+#####  SGDRegressor:test  #####
+Training...
+'text' ColumnExtractor shape=(28969,)
+'text' ColumnExtractor shape=(28969,)
+'author_' PrefixColumnExtractor shape=(28969, 1678)
+'token_count' ColumnExtractor shape=(28969, 1)
+'token_length_mean' ColumnExtractor shape=(28969, 1)
+'char_count' ColumnExtractor shape=(28969, 1)
+'digit_char_ratio' ColumnExtractor shape=(28969, 1)
+'alpha_char_ratio' ColumnExtractor shape=(28969, 1)
+'upper_char_ratio' ColumnExtractor shape=(28969, 1)
+'space_char_ratio' ColumnExtractor shape=(28969, 1)
+'punctuation_char_ratio' ColumnExtractor shape=(28969, 1)
+idfs len=18455, saved 'tmp/idf.txt'
+topic_to_term shape=(8, 18455), saved 'tmp/topic_term.txt'
+features len=20149
+coefs len=20149, saved 'tmp/coefs.txt'
+intercept=[0.09787454]
+__train took 00:15:24
+Testing...
+'text' ColumnExtractor shape=(3219,)
+'text' ColumnExtractor shape=(3219,)
+'author_' PrefixColumnExtractor shape=(3219, 1678)
+'token_count' ColumnExtractor shape=(3219, 1)
+'token_length_mean' ColumnExtractor shape=(3219, 1)
+'char_count' ColumnExtractor shape=(3219, 1)
+'digit_char_ratio' ColumnExtractor shape=(3219, 1)
+'alpha_char_ratio' ColumnExtractor shape=(3219, 1)
+'upper_char_ratio' ColumnExtractor shape=(3219, 1)
+'space_char_ratio' ColumnExtractor shape=(3219, 1)
+'punctuation_char_ratio' ColumnExtractor shape=(3219, 1)
+Test result: r2=0.34676911251904907, mae=2.216866481477075
+__pipeline SGDRegressor:test took 00:16:50
 ```
 
 ### Implementation
@@ -245,17 +169,44 @@ Time taken 00:12:33
 * Wrote custom feature extractors by extending scikit-learn API. This allows better integration of pandas dataframe with `sklearn.pipeline.FeatureUnion`. See [`sklearnpd`](sklearnpd/) package. 
 * Ease of parameter tuning: automatically run pipeline for each combination of parameters provided.
 
+## Deploy as virtual environment
+
+Install dependencies
+
+`(venv) $ pip install -r /path/to/requirements.txt`
+
+Run main with the following options
+
+`(venv) $ python python classify_post_comment_count.py [model] [task]`
+
+Model options
+* `sgd`
+* `ridge`
+
+Task options
+* `train`
+* `validate`
+* `tune`
+* `test`
+
+example:
+
+`(venv) $ python python classify_post_comment_count.py sgd train`
+
+Run unit tests
+
+`(venv) $ python -m unittest`
+
+See test cases for [`etl`](etl/tests/) and [`stringx`](stringx/tests/) packages.
 
 ## Future Work
 
 TODO if I had more time :)
 
-* Add features from post metadata e.g. day-of-week published
-* Feature selection e.g. chi-square
-* Parameter tuning
-* Hand pick stopwords
-* Show most important features per class
-* Topic modelling on selected features - see topics that drive comments
+* Filtering: set a max threshold for document frequency, numeric stopwords like '10AM'
+* Add features from post metadata: day-of-week published
+* Feature selection: chi-square
+* Parameter tuning: SGD loss function, learning rate
 * Increase test coverage
 * Move config from code to file
 * Logging to file
