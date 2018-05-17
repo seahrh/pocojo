@@ -2,6 +2,8 @@
 
 POsts-COmments-JObs dataset
 
+This document describes ongoing work. See [v1.0.md](v1.0.md) for the initial write-up at submission time.
+
 ## Deploy as virtual environment
 
 Install dependencies
@@ -17,25 +19,12 @@ Run unit tests
 ## Data
 
 Size
-* 7,074 posts (worked around the page limit in the posts api)
+* 32,188 posts (worked around the page limit in the posts api)
 * Downloaded comments for each post
-* 4,376 job postings
 
-Comment-count by quartile
-* 25% of posts have zero comments
-* 50% of posts have 2 or less comments
-* 75% of posts have 5 or less comments
+## Task
 
-## Task 1
-
-Classify posts by the number of comments. Get insights into topics or writing style that drives comments.
-
-### Classes
-
-Comment count by range interval (based on quartile analysis)
-* `lo` = [0,2]
-* `mi` = [3,5]
-* `hi` = 6 or more
+Changed from classification task to regression, where the target variable is the comment count of the post.
 
 ### Splitting
 
@@ -47,31 +36,41 @@ Comment count by range interval (based on quartile analysis)
 * Parse json to extract fields
 * Remove HTML tags
 * Convert HTML entities to ASCII
+* Normalize unicode/accented characters: change string encoding to ASCII
+* Count comments by post
+* Extract features (e.g. text, author name) from json to pandas dataframe
+* Serialize pandas dataframe as TSV file (sole data file to be used for ML)
+
+### Feature Engineering
+
 * tf-idf weights
     * Lowercase
     * Remove stopwords
     * Remove punctuation
     * Stemming (Porter)
-* Word count
-* Average word length
+    * Filtering: document frequency thresholding
+* Token count
+* Average token length
 * Author name (one-hot encoded)
-* Document frequency thresholding
-* Count comments by post
+* Character level features (normalised by total character count) 
+    * Total character count
+    * Digit count
+    * Letter count
+    * Uppercase character count
+    * Whitespace character count
+    * Punctuation character count
+    
+Coefficients are listed in [coefs.txt](coefs.txt).     
 
-Sketch of how features are combined
-![](docs/features.svg?sanitize=true)
+### Models
 
-### Classifiers
-
-* Multinomial Naive Bayes
-* Linear SVM
-* Random forest
-* Gradient boosting machine
+* [Stochastic Gradient Descent](http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html)
+* [Ridge Regression](http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html)
 
 ### Parameter tuning
 
 * Grid search
-* Evaluation uses macro F1 (scores below)
+* Evaluation uses R2 (scores below)
 * Due to time constraint, only tuned one variable: document frequency thresholding (best=.01)
 
 ```
@@ -134,7 +133,7 @@ Time taken 00:46:34
 
 ### Validation
 
-* Evaluation uses macro F1. As macro F1 gives equal weight to all classes, it is stricter than micro F1
+* Evaluation uses R2
 * 3-fold validation (save time and train on two-third majority)
 
 ```
@@ -167,7 +166,7 @@ f1_macro=0.4257275226348023 (median)
 
 ### Test
 
-* Evaluation uses macro F1 (same as validation)
+* Evaluation uses R2 (same as validation)
 * Validation result is close to test result but performance is poor. This suggests underfitting
 * Class imbalance: the largest class `lo` is best performing
 * Worst model is linear SVM. This suggests decision boundaries are non-linear
@@ -260,15 +259,12 @@ Time taken 00:12:33
 
 ### Implementation
 
-* Uses [`sklearn.pipeline.Pipeline`](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html) to organise steps and reproduce results
-* Combine text and non-text features with [`sklearn.pipeline.FeatureUnion`](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.FeatureUnion.html)
-* Ease of parameter tuning - automatically run pipeline for each combination of parameters provided   
-* see [classify_post_comment_count.py](classify_post_comment_count.py)
+* Uses [`sklearn.pipeline.Pipeline`](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html) to organise steps and reproduce results. See [classify_post_comment_count.py](classify_post_comment_count.py)
+* Combine text and non-text features with [`sklearn.pipeline.FeatureUnion`](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.FeatureUnion.html). 
+* Wrote custom feature extractors by extending scikit-learn API. This allows better integration of pandas dataframe with `sklearn.pipeline.FeatureUnion`. See [`sklearnpd`](sklearnpd/) package. 
+* Ease of parameter tuning: automatically run pipeline for each combination of parameters provided.
 
-In the script, toggle `__is_tuning = True` or `__is_tuning = False`. Turn tuning off to run the validate-and-test pipeline instead.
-```
-(venv) $ python classify_post_comment_count.py
-```
+
 ## Future Work
 
 TODO if I had more time :)
@@ -282,9 +278,3 @@ TODO if I had more time :)
 * Increase test coverage
 * Move config from code to file
 * Logging to file
-
-## TODO Task 2
-
-Given a post, find similar jobs. This is required for job recommendation:
-* Document vectors are used for content-based recommendation.
-* Similarity score is used for item-based collaborative filtering.
