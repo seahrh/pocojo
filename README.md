@@ -14,7 +14,7 @@ Run unit tests
 
 `(venv) $ python -m unittest`
 
-[Test cases](etl/tests/)
+See test cases for [`etl`](etl/tests/) and [`stringx`](stringx/tests/) packages.
 
 ## Data
 
@@ -46,7 +46,7 @@ Changed from classification task to regression, where the target variable is the
 In all, more than 20K features were created.
 * tf-idf weights
     * Lowercase
-    * Remove stopwords
+    * Remove stopwords (hand picked + [sklearn's base set](https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/feature_extraction/stop_words.py))
     * Remove punctuation
     * Stemming (Porter)
     * Filtering: document frequency thresholding
@@ -65,7 +65,11 @@ In all, more than 20K features were created.
     * Whitespace character count
     * Punctuation character count
     
-Coefficients are listed in [coefs.txt](result/coefs.txt).     
+Coefficients are listed in [coefs.txt](result/coefs.txt). Highlights:
+* tf-idf weights alone account for a R2 score of 0.24
+* Expectedly, some author features have high coefficients
+* Topic features do not have as large coefficients as hoped, need for more tuning
+* Many features with near-zero coefficient, need for feature selection
 
 ### Models
 
@@ -74,66 +78,38 @@ Coefficients are listed in [coefs.txt](result/coefs.txt).
 
 ### Parameter tuning
 
-* Grid search
-* Evaluation uses R2 (scores below)
-* Due to time constraint, only tuned one variable: document frequency thresholding (best=.01)
+Tuned the following parameters with [Grid search](http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html). Scores shown are R2.
 
 ```
-#####  MultinomialNB  #####
+Best: 0.342537 using {'model__alpha': 0.0001}
+0.342537 (0.060945) with: {'model__alpha': 0.0001}
+0.297158 (0.072006) with: {'model__alpha': 0.001}
+0.123099 (0.038804) with: {'model__alpha': 0.01}
+__pipeline SGDRegressor:tune took 03:48:20
 
-Grid search
+Best: 0.342537 using {'model__penalty': 'elasticnet'}
+0.342472 (0.061780) with: {'model__penalty': 'l2'}
+0.341036 (0.055095) with: {'model__penalty': 'l1'}
+0.342537 (0.060945) with: {'model__penalty': 'elasticnet'}
+__pipeline SGDRegressor:tune took 03:57:42
 
-Best: 0.410961 using {'features__tfidf__vector__min_df': 0.01}
+Best: 0.342472 using {'features__topic__lda__max_iter': 3}
+0.342472 (0.061780) with: {'features__topic__lda__max_iter': 3}
+0.342433 (0.061793) with: {'features__topic__lda__max_iter': 6}
+0.342428 (0.061806) with: {'features__topic__lda__max_iter': 10}
+__pipeline SGDRegressor:tune took 04:07:21
 
-0.229051 (0.000118) with: {'features__tfidf__vector__min_df': 1}
+Best: 0.342428 using {'features__topic__lda__n_components': 8}
+0.342428 (0.061806) with: {'features__topic__lda__n_components': 8}
+0.342117 (0.061182) with: {'features__topic__lda__n_components': 16}
+0.342351 (0.060884) with: {'features__topic__lda__n_components': 32}
+__pipeline SGDRegressor:tune took 04:22:39
 
-0.410961 (0.008981) with: {'features__tfidf__vector__min_df': 0.01}
-
-0.400982 (0.007489) with: {'features__tfidf__vector__min_df': 0.05}
-
-Time taken 00:29:49
-
-#####  LinearSVC  #####
-
-Grid search
-
-Best: 0.264455 using {'features__tfidf__vector__min_df': 0.01}
-
-0.253554 (0.034195) with: {'features__tfidf__vector__min_df': 1}
-
-0.264455 (0.049938) with: {'features__tfidf__vector__min_df': 0.01}
-
-0.219819 (0.022228) with: {'features__tfidf__vector__min_df': 0.05}
-
-Time taken 00:31:12
-
-#####  RandomForestClassifier  #####
-
-Grid search
-
-Best: 0.390547 using {'features__tfidf__vector__min_df': 0.01}
-
-0.374912 (0.016261) with: {'features__tfidf__vector__min_df': 1}
-
-0.390547 (0.012971) with: {'features__tfidf__vector__min_df': 0.01}
-
-0.385066 (0.015266) with: {'features__tfidf__vector__min_df': 0.05}
-
-Time taken 00:30:00
-
-#####  GradientBoostingClassifier  #####
-
-Grid search
-
-Best: 0.424758 using {'features__tfidf__vector__min_df': 1}
-
-0.424758 (0.005731) with: {'features__tfidf__vector__min_df': 1}
-
-0.419609 (0.013092) with: {'features__tfidf__vector__min_df': 0.01}
-
-0.417290 (0.006590) with: {'features__tfidf__vector__min_df': 0.05}
-
-Time taken 00:46:34
+Best: 0.345709 using {'features__tfidf__vector__min_df': 1}
+0.345709 (0.064010) with: {'features__tfidf__vector__min_df': 1}
+0.343578 (0.062687) with: {'features__tfidf__vector__min_df': 10}
+0.334686 (0.056161) with: {'features__tfidf__vector__min_df': 100}
+__pipeline: SGDRegressor,tune took 01:53:11
 ```
 
 ### Validation
