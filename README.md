@@ -239,6 +239,7 @@ See test cases for [`etl`](etl/tests/) and [`stringx`](stringx/tests/) packages.
 
 TODO if I had more time :)
 
+* Since FB comments turned on, the Wordpress system doesn't seem to capture comments anymore. May need to right-truncate data
 * Filtering: set a max threshold for document frequency, numeric stopwords like '10AM'
 * Add features from post metadata: day-of-week published
 * Feature selection: chi-square
