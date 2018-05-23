@@ -201,7 +201,8 @@ def __pipeline(classifier, train, test, train_y, test_y, scoring, task='train'):
             # 'features__topic__lda__n_components': [8, 16, 32]
             # 'features__topic__lda__max_iter': [3, 6, 10]
             # 'model__penalty': ['l2', 'l1', 'elasticnet']
-            'model__alpha': [0.0001, 0.001, 0.01]
+            # 'model__alpha': [0.0001, 0.001, 0.01]
+            'model__loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive']
         }
         __grid_search(pipe, param_grid, train, train_y, scoring=scoring)
     elif task == 'validate':
