@@ -9,7 +9,11 @@ setup(
         'numpy>=1.14.2,<2',
         'pandas>=0.22.0,<1',
         'scikit-learn>=0.19.1,<1',
-        'scipy>=1.0.1,<2'
+        'scipy>=1.0.1,<2',
+        'sgcharts-stringx'
+    ],
+    dependency_links=[
+        'git+https://github.com/seahrh/sgcharts-stringx.git@master#egg=sgcharts-stringx-1.0.0'
     ],
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,

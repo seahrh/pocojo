@@ -205,7 +205,8 @@ __pipeline Ridge:test took 00:17:59
 * Wrote custom feature extractors by extending scikit-learn API. This allows better integration of pandas dataframe with `sklearn.pipeline.FeatureUnion`. See [`sklearnpd`](sklearnpd/) package. 
 * Ease of parameter tuning: automatically run pipeline for each combination of parameters provided.
 
-## Deploy as virtual environment
+## Deploy
+### Deploy as virtual environment
 
 Install dependencies
 
@@ -234,6 +235,29 @@ Run unit tests
 `(venv) $ python -m unittest`
 
 See test cases for [`etl`](etl/tests/) and [`stringx`](stringx/tests/) packages.
+
+### Deploy with setuptools
+
+Install custom dependencies from public repositories.
+
+Example [setup.py](setup.py)
+
+```python
+install_requires=[
+    'sgcharts-stringx',
+    ...
+],
+dependency_links=[
+    'git+https://github.com/seahrh/sgcharts-stringx.git@master#egg=sgcharts-stringx-1.0.0'
+]
+```
+
+Then `pip install` to add the custom dependency to the virtual environment.
+
+```
+pip install --process-dependency-l
+inks git+https://github.com/seahrh/sgcharts-stringx.git
+```
 
 ## Future Work
 
