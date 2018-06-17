@@ -255,8 +255,7 @@ dependency_links=[
 Then `pip install` to add the custom dependency to the virtual environment.
 
 ```
-pip install --process-dependency-l
-inks git+https://github.com/seahrh/sgcharts-stringx.git
+pip install --process-dependency-links git+https://github.com/seahrh/sgcharts-stringx.git
 ```
 
 ## Future Work

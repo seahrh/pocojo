@@ -19,7 +19,7 @@ from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumn
     TransformLatentDirichletAllocation
 from stopwords import stopwords
 from stringx import strip_punctuation, is_number
-from timex.timex import Timer, seconds_to_hhmmss
+from timex import Timer, seconds_to_hhmmss
 
 __posts_glob_pattern = 'posts_txt/*.txt'
 __comments_glob_pattern = 'comments/*.json'
