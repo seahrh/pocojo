@@ -262,7 +262,10 @@ pip install --process-dependency-links git+https://github.com/seahrh/sgcharts-st
 
 TODO if I had more time :)
 
-* Since FB comments turned on, the Wordpress system doesn't seem to capture comments anymore. May need to right-truncate data
+* Right-truncate data because almost no comments were recorded from Feb to May 2018. During this time, FB comments replaced the native system.
+* Perform inference in two stages:
+  * Classification task: predict post with non-zero comments
+  * Regression task: predict number of comments for given post
 * Filtering: set a max threshold for document frequency, numeric stopwords like '10AM'
 * Add features from post metadata: day-of-week published
 * Feature selection: chi-square
