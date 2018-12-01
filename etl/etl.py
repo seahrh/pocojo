@@ -1,6 +1,6 @@
 from urllib import request
 from urllib.error import HTTPError
-from stringx.stringx import to_str
+from sgcharts.stringx import to_str
 
 
 def scrape_to_file(url,

@@ -18,7 +18,7 @@ from sklearn.preprocessing import MaxAbsScaler
 from sklearnpd.sklearnpd import ColumnExtractor, TransformPipeline, PrefixColumnExtractor,\
     TransformLatentDirichletAllocation
 from stopwords import stopwords
-from stringx import strip_punctuation, is_number
+from sgcharts.stringx import strip_punctuation, is_number
 from timex import Timer, seconds_to_hhmmss
 
 __posts_glob_pattern = 'posts_txt/*.txt'

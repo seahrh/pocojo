@@ -6,7 +6,7 @@ from pprint import pprint
 import numpy as np
 import pandas as pd
 from etl.markup_remover import strip_html
-from stringx import to_ascii_str, count_digit, count_alpha, count_space, count_upper, count_punctuation
+from sgcharts.stringx import to_ascii_str, count_digit, count_alpha, count_space, count_upper, count_punctuation
 
 __posts_glob_pattern = 'posts/*.json'
 __file_path_template = 'posts_txt/p{}.txt'
