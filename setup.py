@@ -11,11 +11,11 @@ setup(
         'scikit-learn>=0.19.1,<1',
         'scipy>=1.0.1,<2',
         'sgcharts.stringx',
-        'sgcharts-timex'
+        'sgcharts.timex'
     ],
     dependency_links=[
         'git+https://github.com/seahrh/sgcharts.stringx.git@master#egg=sgcharts.stringx-2.0.0',
-        'git+https://github.com/seahrh/sgcharts-timex.git@master#egg=sgcharts-timex-1.0.0'
+        'git+https://github.com/seahrh/sgcharts.timex.git@master#egg=sgcharts.timex-2.0.0'
     ],
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
