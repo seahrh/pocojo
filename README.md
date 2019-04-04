@@ -1,8 +1,6 @@
 # POCOJO
 
-POsts-COmments-JObs dataset
-
-This document describes ongoing work. See [v1.0.md](v1.0.md) for the initial write-up at submission time.
+POsts-COmments-JObs dataset from a news outlet based in Singapore.
 
 ## Data
 
