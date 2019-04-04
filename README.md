@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/seahrh/pocojo.svg?branch=master)](https://travis-ci.org/seahrh/pocojo)
+
 # POCOJO
 
 POsts-COmments-JObs dataset from a news outlet based in Singapore.
